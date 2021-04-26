@@ -20,78 +20,62 @@
                 outline: none;
                 box-sizing: border-box;
             }
-
             body {
                 margin: 8px;
                 background-color: #080808;
                 color: #eee;
                 font-family: "Roboto", sans-serif;
             }
-
             a {
                 color: #eee;
                 text-decoration: none;
             }
-
             table:not(.property-table) {
                 margin: 4px;
                 border-collapse: collapse;
             }
-
             table:not(.property-table) caption {
                 margin-bottom: 4px;
             }
-
             table:not(.property-table) tr:not(:last-of-type) {
                 border-bottom: 1px solid #222;
             }
-
             table:not(.property-table) th {
                 padding: 4px 16px;
                 background-color: #222;
             }
-
             table:not(.property-table) td {
                 background-color: #121212;
             }
-
             table:not(.property-table) th:first-of-type {
                 border-top-left-radius: 8px;
             }
-
             table:not(.property-table) th:last-of-type {
                 border-top-right-radius: 8px;
             }
-
             table:not(.property-table) tr:last-of-type td:first-of-type {
                 border-bottom-left-radius: 8px;
             }
-
             table:not(.property-table) tr:last-of-type td:last-of-type {
                 border-bottom-right-radius: 8px;
             }
-
             table:not(.property-table) td {
                 padding: 4px 6px;
             }
-
             fieldset {
                 margin: 0;
                 padding: 0;
                 border: 0;
             }
-
             section p a {
                 text-decoration: underline;
             }
-
             select:hover,
             button:hover,
             input:hover,
             a:hover {
                 transition: color 200ms, background-color 200ms, opacity 200ms, filter 200ms;
             }
-
             select,
             button,
             input {
@@ -102,7 +86,6 @@
                 font-size: 14px;
                 border-radius: 4px;
             }
-
             select,
             button,
             input[type="submit"],
@@ -110,79 +93,144 @@
             input[type="checkbox"] {
                 cursor: pointer;
             }
-
             select:hover,
             button:hover,
             input:hover {
                 background-color: #2a2a2a;
             }
-
             select:disabled,
             button:disabled,
             input:disabled {
                 background-color: #111;
                 cursor: not-allowed;
             }
-
             select:focus,
             input:not([type="checkbox"]):focus {
                 background-color: #333333;
-                /* outline: 1px solid #888; */
+                
             }
-
             select:invalid,
             input:not([type="checkbox"]):invalid {
-                /* outline: 2px solid rgb(180, 14, 14); */
                 background-color: #331616;
             }
-
-            select {
-                /* appearance: none;
-                -webkit-appearance: none;
-                -moz-appearance: none; */
-                padding: 5px 6px;
-            }
-            /* 
-            select:focus {
-                border-bottom-left-radius: 0;
-                border-bottom-right-radius: 0;
-            } */
-
-            input[type="datetime-local"] {
-                /* appearance: none;
+            select, input[type="datetime-local"] {
+                appearance: none;
                 -webkit-appearance: none;
                 -moz-appearance: none;
-                width: 170px;
-                height: 20px; */
+                padding: 6px;
+                padding-right: 26px;
+                min-width: 60px;
+            }
+            .select  select{
+                width: calc(100% - 2px);
+            }
+            .expand-icon {
+                background-color: #222;
+                padding: 4px 0 5px 0;
+                border-radius: 0 4px 4px 0;
+                margin-left: -26px;
+                pointer-events: none;
+                position: relative;
+            }
+            .expand-icon::after {
+                content: "";
+                width: 24px;
+                height: 24px;
+                display: inline-flex;
+                z-index: 4;
+                vertical-align: middle;
+                background-image: url("https://coddit.xyz/m/uwu9U.svg");
+                filter: invert();
+                pointer-events: none;
+            }
+            input[type="datetime-local"] {
                 padding: 4px 6px;
             }
-
             input[type="number"] {
                 width: 64px;
             }
-
             input[type="search"] {
                 width: 256px;
             }
+            .check-container {
+                display: block;
+                position: relative;
+                padding-left: 28px;
+                margin-bottom: 8px;
+                cursor: pointer;
+                font-size: 18px;
 
+                user-select: none;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+            }
+            .check-container input {
+                position: absolute;
+                opacity: 0;
+                cursor: pointer;
+                height: 0;
+                width: 0;
+            }
+            .checkmark {
+                position: absolute;
+                top: 0;
+                left: 0;
+                height: 22px;
+                width: 22px;
+                background-color: #2d2d2d;
+                border-radius: 4px;
+                transition: 0.1s;
+            }
+            .check-container:hover input ~ .checkmark {
+                filter: brightness(75%);
+            }
+            .check-container input:disabled ~ .checkmark {
+                cursor: not-allowed;
+                filter: brightness(50%);
+            }
+            input:disabled > .checkmark {
+                filter: brightness(50%);
+            }
+            .check-container input:checked ~ .checkmark {
+                background-color: #2d2d2d;
+            }
+            .checkmark:after {
+                content: "";
+                position: absolute;
+                display: none;
+            }
+            .check-container input:checked ~ .checkmark:after {
+                display: block;
+            }
+            .check-container .checkmark:after {
+                left: 6px;
+                top: 2px;
+                width: 5px;
+                height: 10px;
+                border: solid #fff;
+                border-width: 0 3px 3px 0;
+                -webkit-transform: rotate(45deg);
+                -ms-transform: rotate(45deg);
+                transform: rotate(45deg);
+            }
             header,
             main {
                 width: 80%;
                 margin: auto;
             }
-
             header > h1 {
                 margin: 8px 0 0 0;
                 font-size: 3em;
                 font-weight: 500;
             }
-
             header > h1 img {
                 height: 1em;
                 margin-bottom: 6px;
                 vertical-align: middle;
             }
-
             header > h2 {
                 margin: -4px 0 0 62px;
                 color: #aaa;
@@ -190,75 +238,68 @@
                 font-weight: 300;
                 letter-spacing: 1.2px;
             }
-
             header > h1 a:hover,
             header > h2 a:hover {
                 filter: drop-shadow(0 0 4px #ffffffa1);
             }
-
             header > h2 a {
                 color: #aaa;
             }
-
             header nav {
                 margin: 16px 0 32px 0;
             }
-
             header nav ul {
                 margin: 0;
                 padding: 0;
                 list-style: none;
             }
-
             header nav ul li {
                 display: inline;
                 margin-right: -4px;
             }
-
             header nav ul li a {
                 padding: 8px;
                 color: #7a7a7a;
             }
-
             header nav ul li a:hover {
-                /* background-color: #111; */
+                
                 border-bottom: 4px solid #7a7a7a;
             }
-
             header nav ul li a.current {
-                /* background-color: #181818; */
+                
                 color: #eee;
                 border-bottom: 4px solid #eee;
             }
-
             header form input[type="submit"],
             header form input[type="reset"] {
                 padding: 8px 16px;
                 font-size: 1em;
             }
-
             header form input[type="reset"] {
                 background-color: #151515;
                 margin-right: 8px;
             }
-
             header form input[type="reset"]:hover {
                 background-color: #1a1a1a;
             }
-
+            header form fieldset {
+                display: flex;
+                flex-wrap: wrap;
+            }
+            header form fieldset .form-field {
+                margin-right: 4px;
+            }
             .form-field,
             .form-field-inline {
                 display: inline-block;
                 margin: 4px 2px;
             }
-
             .form-field label {
                 display: block;
                 margin-bottom: 4px;
                 font-size: 0.75em;
                 font-weight: bold;
             }
-
             .panel {
                 position: relative;
                 margin: 14px 0 8px 0;
@@ -267,7 +308,6 @@
                 border: 1px solid #333;
                 border-radius: 8px;
             }
-
             .panel > .panel-header {
                 position: absolute;
                 top: -11px;
@@ -283,15 +323,7 @@
                 -ms-user-select: none;
                 user-select: none;
             }
-
-            /* .panel > .panel-header::before {
-                content: "";
-                position: absolute;
-                z-index: 0;
-                top: 9px;
-                padding: 0 100%;
-                border-top: 1px solid #080808;
-            } */
+            
 
             .panel .panel-collapse {
                 width: 10px;
@@ -305,19 +337,15 @@
                 font-size: 0;
                 vertical-align: middle;
             }
-
             .panel.collapsed {
                 opacity: 0.5;
             }
-
             .panel.collapsed > *:not(.panel-header) {
                 display: none;
             }
-
             .panel.collapsed .panel-collapse {
                 background-color: #080808;
             }
-
             .item {
                 margin-top: 8px;
                 padding: 8px;
@@ -325,19 +353,15 @@
                 border-radius: 8px;
                 background-color: #111;
             }
-
             .item.user-hidden {
                 display: none;
             }
-
             .item:first-child {
                 margin-top: 0;
             }
-
             .item a:hover {
                 text-decoration: underline;
             }
-
             .item .thumbnail {
                 min-width: 80px;
                 margin: 0 8px -2px 0;
@@ -347,24 +371,19 @@
                 background-position: center;
                 position: relative;
             }
-
             .item .thumbnail.default {
                 background-size: contain;
                 filter: brightness(0.75);
             }
-
             .item.self .thumbnail.default {
                 background-image: url("https://github.coddit.xyz/search/static/5ZJFo.svg");
             }
-
             .item.link .thumbnail.default {
                 background-image: url("https://github.coddit.xyz/search/static/C6MIl.svg");
             }
-
             .item.nsfw .thumbnail.default {
                 background-image: url("https://github.coddit.xyz/search/static/BnnBQ.svg");
             }
-
             .item .thumbnail.image {
                 background-size: cover;
             }
@@ -381,75 +400,47 @@
                 background-position: center;
                 background-repeat: no-repeat;
             }
-
             .item.expandable .thumbnail:hover::after {
                 cursor: pointer;
                 background-image: url("https://github.coddit.xyz/search/static/8pLXN.svg");
             }
-
             .item.deleted .thumbnail::after {
                 background-image: url("https://github.coddit.xyz/search/static/0LJ0L.svg");
             }
-
             .item.expandable:not(.expanded) .content {
                 display: none;
             }
-
-            /* .item.expandable:not(.expanded) .buttons {
-                margin-top: 0;
-            }
             
-            .item.submission:not(.expandable) .buttons {
-                margin-top: 0;
-            }
-            
-            .item.submission:not(.expandable) .content:not(.empty) ~ .buttons {
-                margin-top: 4px;
-            }
-            
-            .item.submission .content {
-                margin-top: 4px;
-            }
-            
-            .item.comment .content {
-                margin-top: 11px;
-            } */
 
             .item .title {
                 font-size: 1em;
                 margin: 4px 0;
                 overflow-wrap: break-word;
             }
-
             .item .tagline {
                 margin: 4px 0;
                 color: #888;
                 font-size: 0.75em;
             }
-
             .item .tagline a {
                 color: #888;
                 font-weight: bold;
             }
-
             .item .info {
                 margin: 0;
                 padding: 0;
                 list-style: none;
             }
-
             .item .info li {
                 display: inline;
                 margin-right: 8px;
                 border-radius: 4px;
                 font-size: calc(1em - 4px);
             }
-
             .item .info li:not(.tag) {
                 padding: 3px;
                 background-color: #222;
             }
-
             .item .info .score::before,
             .item .info .comment-count::before {
                 content: "";
@@ -460,46 +451,38 @@
                 vertical-align: middle;
                 filter: invert();
             }
-
             .item .info .score::before {
                 background: url("https://github.coddit.xyz/search/static/GkGDz.svg") no-repeat;
                 width: 12px;
                 height: 12px;
                 background-size: contain;
             }
-
             .item .info .comment-count::before {
                 background: url("https://github.coddit.xyz/search/static/t7b2R.svg") no-repeat;
                 background-size: contain;
             }
-
             .item .info .tag {
                 padding: 2px;
                 padding-right: 3px;
                 border: 1px solid #eee;
             }
-
             .item .info .tag.nsfw {
                 border-color: red;
                 color: red;
             }
-
             .item .info .tag.distinguished,
             .item .info .tag.stickied {
                 border-color: green;
                 color: green;
             }
-
             .item .info .tag.stickied {
                 background-color: #00800036;
                 font-weight: bold;
             }
-
             .item .info .tag.locked {
                 border-color: gold;
                 color: gold;
             }
-
             .item .info .tag.locked::before,
             .item .info .tag.tag.distinguished::before,
             .item .info .tag.tag.stickied::before,
@@ -517,47 +500,38 @@
                 background-repeat: no-repeat;
                 background-size: contain;
             }
-
             .item .info .tag.locked::before {
                 background-image: url("https://github.coddit.xyz/search/static/zf1rs.svg");
                 filter: invert(90%) sepia(16%) saturate(6855%) hue-rotate(355deg) brightness(104%) contrast(106%);
             }
-
             .item .info .tag.distinguished::before {
                 background-image: url("https://github.coddit.xyz/search/static/4QPC1.svg");
                 filter: invert(28%) sepia(100%) saturate(1216%) hue-rotate(92deg) brightness(93%) contrast(105%);
             }
-
             .item .info .tag.stickied::before {
                 background-image: url("https://github.coddit.xyz/search/static/73Gdy.svg");
                 filter: invert(28%) sepia(100%) saturate(1216%) hue-rotate(92deg) brightness(93%) contrast(105%);
             }
-
             .item .info .tag.spoiler::before {
                 background-image: url("https://github.coddit.xyz/search/static/fU8YN.svg");
                 filter: invert();
             }
-
             .item .info .tag.nsfw::before {
                 background-image: url("https://github.coddit.xyz/search/static/7UWw8.svg");
                 filter: invert(34%) sepia(78%) saturate(6544%) hue-rotate(350deg) brightness(95%) contrast(135%);
             }
-
             .item .info .tag.removed::before {
                 background-image: url("https://github.coddit.xyz/search/static/160fn.svg");
                 filter: invert();
             }
-
             .item .info .tag.deleted::before {
                 background-image: url("https://github.coddit.xyz/search/static/GjJjB.svg");
                 filter: invert();
             }
-
             .item .info .tag.warn::before {
                 background-image: url("https://github.coddit.xyz/search/static/2dlg0.svg");
                 filter: invert();
             }
-
             .item .content {
                 margin-top: 8px;
                 padding: 8px;
@@ -566,43 +540,34 @@
                 word-wrap: break-word;
                 overflow: auto;
             }
-
             .item .content.empty {
                 display: none;
             }
-
             .item .content .md {
                 max-height: 280px;
             }
-
             .item .content .md > :first-child {
                 margin-top: 0;
             }
-
             .item .content .md > :last-child {
                 margin-bottom: 0;
             }
-
             .item .content img,
             .item .content video {
                 max-width: 400px;
                 max-height: 400px;
             }
-
             .item .content a {
                 color: rgb(121, 162, 201);
             }
-
             .item .properties {
                 margin-top: 8px;
             }
-
             .item .buttons {
                 margin: 4px 0;
                 padding: 0;
                 list-style: none;
             }
-
             .item .buttons li {
                 display: inline;
                 margin-right: 8px;
@@ -610,23 +575,18 @@
                 font-size: 0.75em;
                 font-weight: bold;
             }
-
             .item .buttons li a {
                 color: #888;
             }
-
             .item .buttons .request-info a {
                 color: #555;
             }
-
             .item > *:first-child {
                 margin-top: 0;
             }
-
             .item > *:last-child {
                 margin-bottom: 0;
             }
-
             .flair {
                 margin-left: 4px;
                 padding: 2px;
@@ -634,11 +594,10 @@
                 border-radius: 4px;
                 background-color: #181818;
                 color: #eee;
-                /* font-size: calc(1em - 4px); */
+                
                 font-size: 0.75em;
-                /* vertical-align: middle; */
+                
             }
-
             .md h1,
             .md h2,
             .md h3,
@@ -647,31 +606,26 @@
             .md h6 {
                 margin: 8px 0;
             }
-
             .md p {
                 margin: 4px 0;
             }
-
             .md ul,
             .md ol {
                 margin: 8px;
                 padding-left: 20px;
             }
-
             .md blockquote {
                 padding: 4px;
                 padding-left: 8px;
                 border-left: 4px solid #aaa;
                 background-color: #eeeeee0a;
             }
-
             .md pre {
                 padding: 4px;
                 padding-left: 8px;
                 border-left: 4px solid #888;
                 background-color: #eeeeee04;
             }
-
             .md :not(pre) code {
                 padding: 2px 4px;
                 background-color: #111;
@@ -679,37 +633,29 @@
                 border-radius: 4px;
                 font-size: calc(1em - 4px);
             }
-
             #info-panel #info table tr.user-hidden :is(a, td) {
                 color: #444;
             }
-
             #request-table th {
                 word-wrap: break-word;
             }
-
             #request-table tr th,
             #request-table tr td {
                 padding: 2px;
             }
-
             #request-table tr th:not(:last-child),
             #request-table tr td:not(:last-child) {
                 padding-right: 80px;
             }
-
             #request-table th {
                 text-align: left;
             }
-
             #request-table tr td:nth-child(3) {
                 text-align: center;
             }
-
             #request-table a {
                 text-decoration: underline;
             }
-
             #banner {
                 margin: 8px 0 0 0;
                 padding: 8px;
@@ -719,50 +665,40 @@
                 font-weight: normal;
                 text-align: center;
             }
-
             #items:empty ~ #banner {
                 margin-top: 0;
             }
-
             #banner.failed {
                 border-color: red;
                 color: red;
             }
-
             #load-more-button {
                 width: 100%;
                 margin-top: 8px;
                 padding: 9px;
                 border-radius: 8px;
             }
-
             body:not(.setting-advanced) .advanced-option {
                 display: none;
             }
-
             .status::before {
                 content: "â— ";
             }
-
             .status-pending {
                 color: orange;
             }
-
             .status-2 {
                 color: green;
             }
-
             .status-4,
             .status-5,
             .status-failed {
                 color: red;
             }
-
             .highlighted {
                 background-color: yellow;
                 color: black;
             }
-
             .loading-icon {
                 filter: invert();
                 animation-name: rotate;
@@ -770,7 +706,6 @@
                 animation-timing-function: linear;
                 animation-iteration-count: infinite;
             }
-
             @keyframes rotate {
                 from {
                     transform: rotate(0deg);
@@ -779,112 +714,87 @@
                     transform: rotate(360deg);
                 }
             }
-
             body:not(.setting-dev) .dev-option {
                 display: none;
             }
-
             .inline {
                 display: inline;
             }
-
             .inline-block {
                 display: inline-block;
             }
-
             .center {
                 text-align: center;
             }
-
             [hidden] {
                 display: none !important;
             }
-
             ::-webkit-scrollbar {
                 width: 8px;
                 height: 8px;
             }
-
             ::-webkit-scrollbar-track {
                 background-color: #222;
                 border-radius: 4px;
             }
-
             ::-webkit-scrollbar-thumb {
                 background-color: #444;
                 border-radius: 4px;
             }
-
             ::-webkit-scrollbar-button {
                 display: none;
             }
-
             ::-webkit-scrollbar-corner {
                 display: none;
             }
-
             table.property-table {
                 width: 100%;
                 border-collapse: collapse;
                 font-size: 12px;
             }
-
             .property-table thead tr {
                 background-color: #181818 !important;
             }
-
             .property-table tr:nth-child(even) {
                 background-color: #111;
             }
-
             .property-table tr:nth-child(odd) {
                 background-color: #151515;
             }
-
             .property-table tr:hover {
                 background-color: #1d1d1d;
             }
-
             .property-table td {
                 margin: 0;
                 padding: 2px;
             }
-
             .property-table td:first-of-type {
                 padding-right: 32px;
                 font-weight: bold;
                 white-space: nowrap;
             }
-
             .property-table td:nth-of-type(2) {
                 width: 100%;
             }
-
             .property-table td:hover {
                 outline: 1px solid #444;
             }
-
             .property .value a:hover {
                 text-decoration: underline;
             }
-
             .property .value .color::before {
                 content: "â— ";
             }
-
             .property.expanded > .value {
                 padding: 0;
             }
-
             .property.null {
                 background-color: #181818;
                 color: #888;
             }
-
             .property.null .key {
                 text-decoration: line-through;
             }
-
             .property.string .key::after,
             .property.number .key::after,
             .property.boolean .key::after,
@@ -897,73 +807,64 @@
                 font-size: 8px;
                 vertical-align: middle;
             }
-
             .property.string > .key::after {
                 content: "string";
             }
-
             .property.number > .key::after {
                 content: "number";
             }
-
             .property.boolean > .key::after {
                 content: "boolean";
             }
-
             .property.object > .key::after {
                 content: "object";
             }
-
             .property.array > .key::after {
                 content: "array";
             }
-
             .property.null .value::before {
                 content: "null";
             }
-
             .property.string.empty .value::before {
                 content: "â€œâ€";
                 color: #888;
             }
-
             .property.object.empty.expanded .value::before {
                 content: "{}";
                 padding: 2px;
                 color: #888;
             }
-
             .property.array.empty.expanded .value::before {
                 content: "[]";
                 padding: 2px;
                 color: #888;
             }
-
             .property.boolean .value::before {
                 content: "â— ";
             }
-
             .property.boolean.true .value {
                 color: green;
             }
-
             .property.boolean.false .value {
                 color: red;
             }
-
             @media (max-width: 800px) {
                 header,
                 main {
                     width: 100%;
                     margin: auto;
                 }
-
                 header h1 {
                     font-size: 2em;
                 }
-
                 header h2 {
                     margin: 8px;
+                }
+                header form fieldset .form-field {
+                    flex-grow: 1;
+                }
+                header form fieldset .form-field > :is(input, select, button, .select){
+                    width: 100%;
                 }
             }
         </style>
@@ -1051,73 +952,90 @@
                                 title="Limit to items with scores matching threshold (e.g. >200)"
                             />
                         </div>
+                    </fieldset>
+                    <fieldset>
                         <div class="form-field advanced-option">
                             <label for="parameter-distinguished">Mod</label>
-                            <select
-                                name="distinguished"
-                                id="parameter-distinguished"
-                                data-default-value="any"
-                                title="Limit to distinguished items or vice versa"
-                            >
-                                <option value="any">Any</option>
-                                <option value="moderator">True</option>
-                                <option value="!moderator">False</option>
-                            </select>
+                            <div class="select">
+                                <select
+                                    name="distinguished"
+                                    id="parameter-distinguished"
+                                    data-default-value="any"
+                                    title="Limit to distinguished items or vice versa"
+                                >
+                                    <option value="any">Any</option>
+                                    <option value="moderator">True</option>
+                                    <option value="!moderator">False</option>
+                                </select>
+                                <span class="expand-icon"></span>
+                            </div>
                         </div>
                         <div class="form-field advanced-option">
                             <label for="parameter-stickied">Stickied</label>
-                            <select
-                                name="stickied"
-                                id="parameter-stickied"
-                                data-default-value="any"
-                                title="Limit to stickied/pinned items or vice versa"
-                            >
-                                <option value="any">Any</option>
-                                <option value="true">True</option>
-                                <option value="false">False</option>
-                            </select>
+                            <div class="select">
+                                <select
+                                    name="stickied"
+                                    id="parameter-stickied"
+                                    data-default-value="any"
+                                    title="Limit to stickied/pinned items or vice versa"
+                                >
+                                    <option value="any">Any</option>
+                                    <option value="true">True</option>
+                                    <option value="false">False</option>
+                                </select>
+                                <span class="expand-icon"></span>
+                            </div>
                         </div>
                         <div class="form-field advanced-option">
                             <label for="parameter-locked">Locked</label>
-                            <select
-                                name="locked"
-                                id="parameter-locked"
-                                class="submissions-only"
-                                data-default-value="any"
-                                title="Limit to locked items or vice versa"
-                            >
-                                <option value="any">Any</option>
-                                <option value="true">True</option>
-                                <option value="false">False</option>
-                            </select>
+                            <div class="select">
+                                <select
+                                    name="locked"
+                                    id="parameter-locked"
+                                    class="submissions-only"
+                                    data-default-value="any"
+                                    title="Limit to locked items or vice versa"
+                                >
+                                    <option value="any">Any</option>
+                                    <option value="true">True</option>
+                                    <option value="false">False</option>
+                                </select>
+                                <span class="expand-icon"></span>
+                            </div>
                         </div>
                         <div class="form-field advanced-option">
                             <label for="parameter-over_18">NSFW</label>
-                            <select
-                                name="over_18"
-                                id="parameter-over_18"
-                                class="submissions-only"
-                                data-default-value="any"
-                                title="Limit to NSFW submissions or vice versa (applies to submissions)"
-                            >
-                                <option value="any">Any</option>
-                                <option value="false">False</option>
-                                <option value="true">True</option>
-                            </select>
+                            <div class="select">
+                                <select
+                                    name="over_18"
+                                    id="parameter-over_18"
+                                    class="submissions-only"
+                                    data-default-value="any"
+                                    title="Limit to NSFW submissions or vice versa (applies to submissions)"
+                                >
+                                    <option value="any">Any</option>
+                                    <option value="false">False</option>
+                                    <option value="true">True</option>
+                                </select>
+                                <span class="expand-icon"></span>
+                            </div>
                         </div>
                         <div class="form-field advanced-option">
                             <label for="parameter-is_self">Is Self</label>
-                            <select
-                                name="is_self"
-                                id="parameter-is_self"
-                                class="submissions-only"
-                                data-default-value="any"
-                                title="Limit to selfpost (text) submissions or vice versa (applies to submissions)"
-                            >
-                                <option value="any">Any</option>
-                                <option value="true">True</option>
-                                <option value="false">False</option>
-                            </select>
+                            <div class="select">
+                                <select
+                                    name="is_self"
+                                    id="parameter-is_self"
+                                    class="submissions-only"
+                                    data-default-value="any"
+                                    title="Limit to selfpost (text) submissions or vice versa (applies to submissions)"
+                                >
+                                    <option value="any">Any</option>
+                                    <option value="true">True</option>
+                                    <option value="false">False</option>
+                                </select>
+                                <span class="expand-icon"></span>
+                            </div>
                         </div>
                     </fieldset>
                     <fieldset class="advanced-option dev-option">
@@ -1152,28 +1070,34 @@
                     <fieldset>
                         <div class="form-field">
                             <label for="parameter-meta_type">Type</label>
-                            <select
-                                name="meta_type"
-                                id="parameter-meta_type"
-                                data-default-value="any"
-                                title="Limit to items of type (submission, comment, or both)"
-                            >
-                                <option value="any">Any</option>
-                                <option value="submission">Submissions</option>
-                                <option value="comment">Comments</option>
-                            </select>
+                            <div class="select">
+                                <select
+                                    name="meta_type"
+                                    id="parameter-meta_type"
+                                    data-default-value="any"
+                                    title="Limit to items of type (submission, comment, or both)"
+                                >
+                                    <option value="any">Any</option>
+                                    <option value="submission">Submissions</option>
+                                    <option value="comment">Comments</option>
+                                </select>
+                                <span class="expand-icon"></span>
+                            </div>
                         </div>
                         <div class="form-field">
                             <label for="parameter-sort">Sort</label>
-                            <select
-                                name="sort"
-                                id="parameter-sort"
-                                data-default-value="desc"
-                                title="Search sorting (newest to oldest or oldest to newest)"
-                            >
-                                <option value="desc">Descending</option>
-                                <option value="asc">Ascending</option>
-                            </select>
+                            <div class="select">
+                                <select
+                                    name="sort"
+                                    id="parameter-sort"
+                                    data-default-value="desc"
+                                    title="Search sorting (newest to oldest or oldest to newest)"
+                                >
+                                    <option value="desc">Descending</option>
+                                    <option value="asc">Ascending</option>
+                                </select>
+                                <span class="expand-icon"></span>
+                            </div>
                         </div>
                         <div class="form-field">
                             <label for="parameter-limit">Limit</label>
@@ -1189,15 +1113,17 @@
                     </fieldset>
                     <div class="option-group advanced-option">
                         <div class="form-field-inline">
-                            <input
-                                type="checkbox"
-                                name="meta_search_exact"
-                                id="parameter-meta_search_exact"
-                                value="true"
-                                data-dependent-on="parameter-q"
-                                title="Require exact search match (dependent on Search Terms)"
-                            />
-                            <label for="parameter-meta_search_exact">Require Exact Match</label>
+                            <label class="check-container" for="parameter-meta_search_exact">Require Exact Match
+                                <input
+                                    type="checkbox"
+                                    name="meta_search_exact"
+                                    id="parameter-meta_search_exact"
+                                    value="true"
+                                    data-dependent-on="parameter-q"
+                                    title="Require exact search match (dependent on Search Terms)"
+                                />
+                                <span class="checkmark"></span>
+                            </label>
                         </div>
                         <div class="form-field-inline dev-option">
                             <input type="checkbox" name="metadata" id="parameter-metadata" value="false" />
