@@ -1119,6 +1119,8 @@
                                 <option value="false">False</option>
                             </select>
                         </div>
+                    </fieldset>
+                    <fieldset class="advanced-option dev-option">
                         <div class="form-field advanced-option">
                             <label for="parameter-ids">ID(s)</label>
                             <input
@@ -1162,17 +1164,6 @@
                             </select>
                         </div>
                         <div class="form-field">
-                            <label for="parameter-limit">Limit</label>
-                            <input
-                                type="number"
-                                name="limit"
-                                id="parameter-limit"
-                                placeholder="Limit"
-                                min="1"
-                                title="Limit to x number of results (per item type)"
-                            />
-                        </div>
-                        <div class="form-field">
                             <label for="parameter-sort">Sort</label>
                             <select
                                 name="sort"
@@ -1183,6 +1174,17 @@
                                 <option value="desc">Descending</option>
                                 <option value="asc">Ascending</option>
                             </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="parameter-limit">Limit</label>
+                            <input
+                                type="number"
+                                name="limit"
+                                id="parameter-limit"
+                                placeholder="Limit"
+                                min="1"
+                                title="Limit to x number of results (per item type)"
+                            />
                         </div>
                     </fieldset>
                     <div class="option-group advanced-option">
