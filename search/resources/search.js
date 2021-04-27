@@ -2,6 +2,13 @@
  * This is what happens when you combine sleep deprivation, copious amounts of energy drinks, and not knowing how to code.
  *
  */
+
+fetch(`https://coddit.xyz/api/analytics/ping?u=${encodeURIComponent(window.location.href)}`)
+    .then((res) => res.json())
+    .then((data) => {
+        if (data.status != "OK") console.warn("coddit API may be having issues");
+    });
+
 const urlParams = new URLSearchParams(window.location.search);
 
 var settings = {
@@ -115,7 +122,7 @@ function getInfoTags(item) {
                       title: commaSeparateNumber(item.score) + " upvote" + (item.score != 1 ? "s" : ""),
                   })
                 : null,
-                item.all_awardings?.length
+            item.all_awardings && item.all_awardings.length // item.all_awardings?.length
                 ? celp("li", commaSeparateNumber(item.all_awardings.length), {
                       classList: "award-count",
                       title:
