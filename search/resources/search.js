@@ -115,7 +115,7 @@ function getInfoTags(item) {
                       title: commaSeparateNumber(item.score) + " upvote" + (item.score != 1 ? "s" : ""),
                   })
                 : null,
-            item.all_awardings?.length
+                item.all_awardings?.length
                 ? celp("li", commaSeparateNumber(item.all_awardings.length), {
                       classList: "award-count",
                       title:
@@ -446,7 +446,7 @@ function validateItem(item, params) {
     function checkState() {
         let valid = true;
         if (urlParams.has("meta_state")) {
-            valid = item._meta.state = urlParams.get("meta_state");
+            valid = urlParams.get("meta_state").split(/[,+ ]/).includes(item._meta.state);
         }
         return valid;
     }
