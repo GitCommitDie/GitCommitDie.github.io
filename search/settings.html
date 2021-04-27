@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=0.75" />
+        <meta name="description" content="An advanced search utility for reddit." />
+        <meta property="og:title" content="Settings - Coddit ReSearch" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="static/5eYcQ.png" />
+        <meta property="og:url" content="https://github.coddit.xyz/search/" />
+        <meta property="og:description" content="An advanced search utility for reddit." />
+        <meta property="og:site_name" content="Coddit GitHub" />
+        <link rel="shortcut icon" href="static/favicon.ico" type="image/x-icon" />
+        <title>Settings - Coddit ReSearch</title>
+        <link rel="stylesheet" href="resources/style.css" />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-172501649-1"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() {
+                dataLayer.push(arguments);
+            }
+            gtag("js", new Date());
+            gtag("config", "UA-172501649-1");
+        </script>
+        <script src="resources/u1.js"></script>
+    </head>
+    <body>
+        <header>
+            <h1>
+                <a href="/search/"
+                    ><img src="static/LCUt7.png" alt="reddit logo" /> Coddit <em style="font-weight: 300">Re</em>Search</a
+                >
+            </h1>
+            <h2>Powered by <a href="https://pushshift.io">Pushshift</a></h2>
+            <nav>
+                <ul>
+                    <li><a href="/search/">Home</a></li>
+                    <li><a href="/search/about">About</a></li>
+                    <li><a href="/search/settings" class="current">Settings</a></li>
+                </ul>
+            </nav>
+        </header>
+        <main>
+            <section>
+                <div class="panel">
+                    <h1 class="panel-header">Settings</h1>
+                    <form id="settings">
+                        <div>
+                            <input
+                                type="checkbox"
+                                name="advanced"
+                                id="setting-advanced"
+                                value="true"
+                                class="setting"
+                                data-default="true"
+                                title="Show advanced options"
+                            />
+                            <label for="setting-advanced" title="Show advanced options">Show Advanced Options</label>
+                        </div>
+                        <div>
+                            <input
+                                type="checkbox"
+                                name="dev"
+                                id="setting-dev"
+                                value="true"
+                                class="setting"
+                                data-default="false"
+                                title="Show developer options"
+                            />
+                            <label for="setting-dev" title="Show developer options">Show Developer Options</label>
+                        </div>
+                        <div>
+                            <input
+                                type="checkbox"
+                                name="hideNSFW"
+                                id="hide-nsfw"
+                                value="true"
+                                class="setting"
+                                data-default="true"
+                                title="Hide NSFW content"
+                            />
+                            <label for="hide-nsfw" title="Hide NSFW content">Hide NSFW Content</label>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </main>
+        <script src="resources/settings.js"></script>
+    </body>
+</html>
