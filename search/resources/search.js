@@ -957,6 +957,14 @@ gel("parameter-meta_type").onchange = (event) => {
     }
 };
 
+gel("parameter-meta_api").onchange = (event) => {
+    if (event.target.value == "coddit") {
+        alert(
+            "NOTICE: The coddit statistics API is not a Pushshift equivalent.\n\nIts primary purpose is to provide subreddit analytics and moderation utilities for r/teenagers. It only contains data from a few select subreddits and does not support full text search or many of the other parameters available with Pushshift."
+        );
+    }
+};
+
 gel("request-form").onsubmit = (event) => {
     Array.from(event.target.querySelectorAll("input, select")).forEach((element) => {
         if (!element.value || element.value == element.dataset.defaultValue) {
