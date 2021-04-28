@@ -567,7 +567,6 @@ async function fetchItems(endpoint, params) {
         newItems = items.filter((item) => !cachedItems.has(item));
 
         for (let item of newItems) {
-            if (cachedItems.valid.length >= 2000 || cachedItems.all.length >= 5000) throw "maximum item limit reached";
             item._meta.valid = validateItem(item, params);
             cachedItems.add(item);
         }
