@@ -853,6 +853,7 @@ header form fieldset .form-field {
 #banner.failed {
     border-color: red;
     color: red;
+    background-color: #2d0303;
 }
 
 #load-more-button {

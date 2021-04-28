@@ -59,6 +59,9 @@ function getVisibleLimit() {
 }
 
 function appendItemProps(item, metadata) {
+    if (item.fullname) {
+        item.id = item.fullname.split("_")[1];
+    }
     item._kind = metadata.type == "comment" ? "t1" : "t3";
     item._type = metadata.type;
     item._name = item._kind + "_" + item.id;
@@ -187,8 +190,7 @@ function getContent(item) {
                 try {
                     if (item.over_18 && settings.hideNSFW) {
                         return `<a href="${item.url}">[content hidden]</a>`;
-                    }
-                    if (item.is_self) {
+                    } else if (item.is_self) {
                         empty = !item.selftext_html && !item.selftext;
                         return cel(
                             "div",
@@ -205,8 +207,7 @@ function getContent(item) {
                             })(),
                             "md"
                         );
-                    }
-                    if (item.is_gallery) {
+                    } else if (item.is_gallery) {
                         let gallery = cel("div", null, "gallery");
                         for (let gallery_item of item.gallery_data.items) {
                             let media_id = gallery_item.media_id;
@@ -220,24 +221,18 @@ function getContent(item) {
                             );
                         }
                         return gallery.outerHTML;
-                    }
-                    if (item.is_video) {
+                    } else if (item.is_video) {
                         let s = `<video controls><source src="${item.media.reddit_video.fallback_url.split("?")[0]}"></video>`;
                         // s += `<audio controls><source src="${
                         //     item.media.reddit_video.fallback_url.replace(/DASH_[\w\d]+/, "DASH_audio").split("?")[0]
                         // }"></audio>`;
                         return s;
-                    }
-                    if (item.url.match(/\.(png|jpe?g|gif|webp|svg)$/)) {
+                    } else if (item.url.match(/\.(png|jpe?g|gif|webp|svg)$/)) {
                         return `<a href="${item.url}" target="_blank"><img src="${item.url}" alt="user generated image content"></a>`;
-                    }
-                    if (item.url.match(/\.(mp4|webm)$/)) {
-                        let s = `<video controls><source src="${item.media.reddit_video.fallback_url}"></video>`;
-                        // s += `<audio controls><source src="${item.media.reddit_video.fallback_url.replace(
-                        //     /DASH_[\w\d]+/,
-                        //     "DASH_audio"
-                        // )}"></audio>`;
-                        return s;
+                    } else if (item.url.match(/\.(mp4|mov|webm)$/)) {
+                        return `<video controls><source src="${item.url}"></video>`;
+                    } else if (item.url.match(/\.(mp3|wav)$/)) {
+                        return `<audio controls><source src="${item.url}"></audio>`;
                     }
                 } catch (error) {
                     console.warn(error);
@@ -490,8 +485,12 @@ async function fetchItems(endpoint, params) {
 
     callParams.set("limit", 100);
 
-    let fetchURL =
-        `https://api.pushshift.io/reddit/search/${endpoint}/` + (callParams.toString() ? "?" + callParams.toString() : "");
+    let apiEndpoint =
+        urlParams.get("meta_api") == "coddit"
+            ? `https://coddit.xyz/modtools/api/db/basicquery/${endpoint}`
+            : `https://api.pushshift.io/reddit/search/${endpoint}/`;
+
+    let fetchURL = apiEndpoint + (callParams.toString() ? "?" + callParams.toString() : "");
 
     updateRequestTable(fetchURL, "pending");
 
@@ -536,6 +535,12 @@ async function fetchItems(endpoint, params) {
                 if (refreshed_item.name == item._name) {
                     for (const [key, value] of Object.entries(refreshed_item)) {
                         if (!["author", "selftext", "body", "selftext_html", "body_html"].includes(key)) {
+                            item[key] = value;
+                        } else if (["selftext_html", "body_html"].includes(key)) {
+                            if (!item.hasOwnProperty(key.replace(/_html$/, ""))) {
+                                item[key] = value;
+                            }
+                        } else if (!item.hasOwnProperty(key)) {
                             item[key] = value;
                         }
                     }
@@ -585,11 +590,7 @@ async function fetchItems(endpoint, params) {
 
         updateRequestTable(fetchURL, "failed");
 
-        if (error.message.lower().includes("cors")) {
-            gel("banner").innerHTML = "Error Loading Items: Pushshift API failed to respond.";
-        } else {
-            gel("banner").innerHTML = "Error Loading Items: " + error.message;
-        }
+        gel("banner").innerHTML = "Error Loading Items: " + error.message;
         gel("banner").classList.add("failed");
 
         throw error;
@@ -680,7 +681,7 @@ async function processQueue() {
 
     gel(
         "banner"
-    ).innerHTML = `Loading • Found <span class="loaded-count">0</span> Items<img class="loading-icon" src="/search/static/CGH1e.png" style="height: 2em; vertical-align: middle; margin: 0 0 2px 16px;">`;
+    ).innerHTML = `<img class="loading-icon" src="/search/static/CGH1e.png" style="height: 2em; vertical-align: middle; margin: 0 16px 2px 0;">Loading • Found <span class="loaded-count">0</span> Items`;
     gel("banner").hidden = false;
 
     while ((nextRequest = requestQueue.shift())) {
