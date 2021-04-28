@@ -585,7 +585,11 @@ async function fetchItems(endpoint, params) {
 
         updateRequestTable(fetchURL, "failed");
 
-        gel("banner").innerHTML = "Error Loading Items";
+        if (error.message.lower().includes("cors")) {
+            gel("banner").innerHTML = "Error Loading Items: Pushshift API failed to respond.";
+        } else {
+            gel("banner").innerHTML = "Error Loading Items: " + error.message;
+        }
         gel("banner").classList.add("failed");
 
         throw error;
@@ -674,12 +678,15 @@ async function processQueue() {
 
     gel("parameters-panel").classList.add("collapsed");
 
-    gel("banner").innerHTML =
-        '<img class="loading-icon" src="/search/static/CGH1e.png" style="height: 2em; vertical-align: middle; margin-bottom: 2px;">';
+    gel(
+        "banner"
+    ).innerHTML = `Loading • Found <span class="loaded-count">0</span> Items<img class="loading-icon" src="/search/static/CGH1e.png" style="height: 2em; vertical-align: middle; margin: 0 0 2px 16px;">`;
     gel("banner").hidden = false;
 
     while ((nextRequest = requestQueue.shift())) {
         let request = nextRequest;
+
+        qel("#banner .loaded-count").innerHTML = cachedItems.valid.length;
 
         await fetchItems(request[0], request[1]);
 
