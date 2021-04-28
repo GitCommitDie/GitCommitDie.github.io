@@ -74,7 +74,8 @@ section p a {
 select:hover,
 button:hover,
 input:hover,
-a:hover {
+a:hover,
+.select:hover .expand-icon {
     transition: color 200ms, background-color 200ms, opacity 200ms, filter 200ms;
 }
 
@@ -99,24 +100,28 @@ input[type="checkbox"] {
 
 select:hover,
 button:hover,
-input:hover {
+input:hover,
+.select:hover .expand-icon {
     background-color: #2a2a2a;
 }
 
 select:disabled,
 button:disabled,
-input:disabled {
+input:disabled,
+.select.disabled .expand-icon {
     background-color: #111;
     cursor: not-allowed;
 }
 
 select:focus,
-input:not([type="checkbox"]):focus {
+input:not([type="checkbox"]):focus,
+.select select:focus ~ .expand-icon {
     background-color: #333333;
 }
 
 select:invalid,
-input:not([type="checkbox"]):invalid {
+input:not([type="checkbox"]):invalid,
+.select select:invalid ~ .expand-icon {
     background-color: #331616;
 }
 

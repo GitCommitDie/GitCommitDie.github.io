@@ -989,6 +989,24 @@ qels("input[type='checkbox']").forEach((element) => {
     });
 });
 
+qels("select").forEach((e) => {
+    let p = e.parentElement;
+    if (p.classList.contains("select")) {
+        const ob = new MutationObserver(function (ms, ob) {
+            ms.forEach((m) => {
+                if (m.attributeName == "disabled") {
+                    if (e.disabled) {
+                        p.classList.add("disabled");
+                    } else {
+                        p.classList.remove("disabled");
+                    }
+                }
+            });
+        });
+        ob.observe(e, { attributes: true });
+    }
+});
+
 qels(".panel-header").forEach((element) => {
     element.onclick = () => {
         let parent = element.parentElement;
