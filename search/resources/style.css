@@ -234,7 +234,8 @@ input.small {
     filter: brightness(75%);
 }
 
-.check-container input:disabled ~ .checkmark {
+.check-container input:disabled ~ .checkmark,
+.check-container input:disabled ~ .checkmark ~ span {
     cursor: not-allowed;
     filter: brightness(50%);
 }

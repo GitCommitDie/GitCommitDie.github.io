@@ -372,7 +372,7 @@ function getDisplayItem(item) {
                     "item",
                     "thing",
                     "submission",
-                    useThumbnail || (item.over_18 && settings.hideNSFW) ? "expandable" : null,
+                    useThumbnail ? "expandable" : null,
                     item.removed_by_category == "deleted" ? "deleted" : null,
                     item.is_self ? "self" : "link",
                     item.over_18 ? "nsfw" : null,
@@ -501,7 +501,7 @@ async function fetchItems(endpoint, params) {
         updateRequestTable(fetchURL, response.status);
 
         if (!response.ok) {
-            throw "non-200 response status";
+            throw new Error("Non-2xx response status from " + fetchURL);
         }
 
         const data = await response.json();
@@ -946,16 +946,6 @@ if (settings.dev) {
     document.body.classList.add("setting-dev");
 }
 
-gel("parameter-meta_type").onchange = (event) => {
-    gels("comments-only").forEach((element) => (element.disabled = false));
-    gels("submissions-only").forEach((element) => (element.disabled = false));
-    if (event.target.value == "submission") {
-        gels("comments-only").forEach((element) => (element.disabled = true));
-    } else if (event.target.value == "comment") {
-        gels("submissions-only").forEach((element) => (element.disabled = true));
-    }
-};
-
 gel("parameter-meta_api").onchange = (event) => {
     if (event.target.value == "coddit") {
         alert(
@@ -966,7 +956,7 @@ gel("parameter-meta_api").onchange = (event) => {
 
 gel("request-form").onsubmit = (event) => {
     Array.from(event.target.querySelectorAll("input, select")).forEach((element) => {
-        if (!element.value || element.value == element.dataset.defaultValue) {
+        if (!element.value || element.value == element.dataset.defaultValue || element.disabled) {
             element.name = "";
         }
 
@@ -1150,34 +1140,62 @@ if (window.location.href.split("?").length > 1) {
 }
 
 qels("[data-dependent-on]").forEach((element) => {
-    let dependencyRequirements = element.dataset.dependentOn.split("=");
-    let dependentInput = gel(dependencyRequirements[0]);
-    let requiredValue = dependencyRequirements.slice(1).join("");
+    let conditions = [];
 
-    function disabledCheck() {
-        element.disabled = requiredValue ? !dependentInput.value.match(requiredValue) : !dependentInput.value;
+    for (let condition of element.dataset.dependentOn.split(";")) {
+        let inverted = condition.match(/[^=]+!=/) ? true : false;
+        let requirementDetails = condition.split(/!?=/);
+        if (requirementDetails.length == 1) {
+            if (requirementDetails[0].startsWith("!")) {
+                inverted = true;
+                requirementDetails[0] = requirementDetails[0].substring(1);
+            }
+        }
+        let requirementInput = gel(requirementDetails[0]);
+        let requirementValue = requirementDetails.slice(1).join("");
+
+        let newCondition = { requirementInput, requirementValue, inverted };
+
+        conditions.push(newCondition);
+
+        validateRequirements();
+
+        requirementInput.addEventListener(
+            requirementInput.tagName == "SELECT" || requirementInput.type == "checkbox" ? "change" : "keyup",
+            () => {
+                validateRequirements();
+            }
+        );
     }
 
-    disabledCheck();
-
-    if (dependentInput.tagName == "SELECT") {
-        dependentInput.addEventListener("change", () => {
-            disabledCheck();
-        });
-    } else if (dependentInput.tagName == "INPUT") {
-        switch (dependentInput.type) {
-            case "checkbox":
-                dependentInput.addEventListener("change", () => {
-                    disabledCheck();
-                });
-                break;
-            case "text":
-            case "search":
-            case "password":
-                dependentInput.addEventListener("keyup", () => {
-                    disabledCheck();
-                });
-                break;
+    function validateRequirements() {
+        element.disabled = false;
+        for (let condition of conditions) {
+            if (condition.requirementValue) {
+                if (!condition.inverted) {
+                    if (!condition.requirementInput.value.match(condition.requirementValue)) {
+                        element.disabled = true;
+                        return;
+                    }
+                } else {
+                    if (condition.requirementInput.value.match(condition.requirementValue)) {
+                        element.disabled = true;
+                        return;
+                    }
+                }
+            } else {
+                if (!condition.inverted) {
+                    if (!condition.requirementInput.value) {
+                        element.disabled = true;
+                        return;
+                    }
+                } else {
+                    if (condition.requirementInput.value) {
+                        element.disabled = true;
+                        return;
+                    }
+                }
+            }
         }
     }
 });
