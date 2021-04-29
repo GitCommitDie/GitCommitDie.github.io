@@ -333,7 +333,13 @@ function getDisplayItem(item) {
                     getTagline(),
                     getInfoTags(item),
                     getContent(item),
-                    settings.advanced ? cel("div", [tableify({ properties: item })], "properties dev-option") : null,
+                    settings.advanced
+                        ? cel(
+                              "div",
+                              [tableify_v2({ properties: item }, { usePlaceholders: true, sort: true })],
+                              "properties dev-option"
+                          )
+                        : null,
                     getButtons(),
                 ],
                 ["item", "thing", "comment", item.removed_by_category == "deleted" ? "deleted" : null]
@@ -375,7 +381,13 @@ function getDisplayItem(item) {
                         }
                     ),
                     getContent(item),
-                    settings.advanced ? cel("div", [tableify({ properties: item })], "properties dev-option") : null,
+                    settings.advanced
+                        ? cel(
+                              "div",
+                              [tableify_v2({ properties: item }, { usePlaceholders: true, sort: true })],
+                              "properties dev-option"
+                          )
+                        : null,
                     getButtons(),
                 ],
                 [
@@ -545,8 +557,10 @@ async function fetchItems(endpoint, params) {
                 if (refreshed_item.name == item._name) {
                     item._refreshed_properties = {};
                     for (const [key, value] of Object.entries(refreshed_item)) {
-                        if (!["author", "selftext", "body", "selftext_html", "body_html"].includes(key)) {
-                            item[key] = value;
+                        if (!["author", "selftext", "body", "selftext_html", "body_html", "distinguished"].includes(key)) {
+                            if (!(refreshed_item.author == "[deleted]" && refreshed_item[key] == null)) {
+                                item[key] = value;
+                            }
                         } else if (["selftext_html", "body_html"].includes(key)) {
                             if (!item.hasOwnProperty(key.replace(/_html$/, ""))) {
                                 item[key] = value;
@@ -602,7 +616,7 @@ async function fetchItems(endpoint, params) {
 
         updateRequestTable(fetchURL, "failed");
 
-        gel("banner").innerHTML = "Error Loading Items: " + error.message;
+        gel("banner").innerHTML = "Error Loading Items: " + error.message || error;
         gel("banner").classList.add("failed");
 
         throw error;
@@ -1030,7 +1044,21 @@ qels(".panel").forEach((element) => {
 });
 
 gel("download-button").onclick = () => {
-    downloadText(JSON.stringify({ items: cachedItems.valid }, null, 4), "data.json");
+    let downloadItems = [];
+    for (let cachedItem of cachedItems.shown) {
+        let item = JSON.parse(JSON.stringify(cachedItem));
+        for (const key in item) {
+            if (key.startsWith("_")) {
+                delete item[key];
+            }
+        }
+        if (cachedItem._refreshed_properties) {
+            item._refreshed_properties = cachedItem._refreshed_properties;
+        }
+        downloadItems.push(item);
+    }
+    let downloadString = JSON.stringify({ items: downloadItems }, null, 4);
+    downloadText(downloadString, "data.json");
 };
 
 if (window.location.href.split("?").length > 1) {

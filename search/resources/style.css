@@ -454,6 +454,10 @@ header form fieldset .form-field {
     background-color: #080808;
 }
 
+.panel.collapsed:hover {
+    opacity: 0.8;
+}
+
 .item {
     margin-top: 8px;
     padding: 8px;
