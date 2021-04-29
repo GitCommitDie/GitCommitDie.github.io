@@ -925,11 +925,10 @@ function updateInfo() {
     gel("info-panel").classList.remove("collapsed");
 }
 
-for (let [key, value] of Object.entries(getCookies())) {
-    if (!key.startsWith("setting_")) continue;
-    if (value.match(/^(true|false)$/)) value = value == "true";
-    else if (parseInt(value) || value == 0) value = parseInt(value);
-    settings[key.replace(/^setting_/, "")] = value;
+if (getCookie("search_preferences")) {
+    for (const [key, value] of Object.entries(JSON.parse(getCookie("search_preferences")))) {
+        settings[key] = value;
+    }
 }
 
 if (settings.advanced) {
