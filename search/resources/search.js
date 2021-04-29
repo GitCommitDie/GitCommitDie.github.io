@@ -89,8 +89,18 @@ function appendExtraProps(item) {
         }
     } else {
         if (item._kind == "t1") {
-            if (item.author == "[deleted]" && item.body == "[removed]") {
+            if (
+                (item.author == "[deleted]" && item.body == "[removed]") ||
+                (item._refreshed_properties &&
+                    item._refreshed_properties.author == "[deleted]" &&
+                    item._refreshed_properties.body == "[removed]")
+            ) {
                 item._meta.state = "removed maybe";
+            } else if (
+                item.author == "[deleted]" ||
+                (item._refreshed_properties && item._refreshed_properties.author == "[deleted]")
+            ) {
+                item._meta.state = "deleted";
             }
         }
     }
@@ -533,6 +543,7 @@ async function fetchItems(endpoint, params) {
             refreshed_item = refreshed_item.data;
             for (let item of items) {
                 if (refreshed_item.name == item._name) {
+                    item._refreshed_properties = {};
                     for (const [key, value] of Object.entries(refreshed_item)) {
                         if (!["author", "selftext", "body", "selftext_html", "body_html"].includes(key)) {
                             item[key] = value;
@@ -542,6 +553,8 @@ async function fetchItems(endpoint, params) {
                             }
                         } else if (!item.hasOwnProperty(key)) {
                             item[key] = value;
+                        } else {
+                            item._refreshed_properties[key] = value;
                         }
                     }
                     item._meta.refreshed = true;
