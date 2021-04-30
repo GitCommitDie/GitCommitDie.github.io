@@ -1024,7 +1024,7 @@ function updateInfo() {
                 let tbody = cel("tbody");
                 for (let author of authors) {
                     let row = cel("tr", [
-                        cel("td", getListToggleButton(tbody, author.name, "user-hidden-subreddit", "subreddit")),
+                        cel("td", getListToggleButton(tbody, author.name, "user-hidden-author", "author")),
                         cel("td", author.contributions, "center"),
                         cel("td", author.submissions, "center"),
                         cel("td", author.comments, "center"),
