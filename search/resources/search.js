@@ -16,6 +16,7 @@ var settings = {
     dev: false,
     hideNSFW: true,
     defaultPageSize: 25,
+    refreshItems: true,
 };
 
 var loadedItems = [];
@@ -596,57 +597,61 @@ async function fetchItems(endpoint, params) {
             names.push(item._name);
         });
 
-        try {
-            let refreshURL = "https://oauth.reddit.com/api/info?id=" + names.join(",");
+        if (settings.refreshItems) {
+            try {
+                let refreshURL = "https://oauth.reddit.com/api/info?id=" + names.join(",");
 
-            console.log("fetching " + refreshURL + "...");
+                console.log("fetching " + refreshURL + "...");
 
-            const refresh_response = await fetch(refreshURL, {
-                headers: {
-                    Authorization: "Bearer " + (await getAccessToken()),
-                },
-            });
-            const refresh_data = await refresh_response.json();
+                const refresh_response = await fetch(refreshURL, {
+                    headers: {
+                        Authorization: "Bearer " + (await getAccessToken()),
+                    },
+                });
+                const refresh_data = await refresh_response.json();
 
-            for (let refreshedItem of refresh_data.data.children) {
-                refreshedItem = refreshedItem.data;
-                for (let item of items) {
-                    if (refreshedItem.name == item._name) {
-                        item._refreshed_properties = {};
-                        for (const [key, value] of Object.entries(refreshedItem)) {
-                            if (!["author", "selftext", "body", "selftext_html", "body_html", "distinguished"].includes(key)) {
-                                if (!(refreshedItem.author == "[deleted]" && refreshedItem[key] == null)) {
+                for (let refreshedItem of refresh_data.data.children) {
+                    refreshedItem = refreshedItem.data;
+                    for (let item of items) {
+                        if (refreshedItem.name == item._name) {
+                            item._refreshed_properties = {};
+                            for (const [key, value] of Object.entries(refreshedItem)) {
+                                if (
+                                    !["author", "selftext", "body", "selftext_html", "body_html", "distinguished"].includes(key)
+                                ) {
+                                    if (!(refreshedItem.author == "[deleted]" && refreshedItem[key] == null)) {
+                                        item[key] = value;
+                                    }
+                                } else if (["selftext_html", "body_html"].includes(key)) {
+                                    if (!item.hasOwnProperty(key.replace(/_html$/, ""))) {
+                                        item[key] = value;
+                                    }
+                                } else if (!item.hasOwnProperty(key)) {
                                     item[key] = value;
+                                } else {
+                                    item._refreshed_properties[key] = value;
                                 }
-                            } else if (["selftext_html", "body_html"].includes(key)) {
-                                if (!item.hasOwnProperty(key.replace(/_html$/, ""))) {
-                                    item[key] = value;
-                                }
-                            } else if (!item.hasOwnProperty(key)) {
-                                item[key] = value;
-                            } else {
-                                item._refreshed_properties[key] = value;
                             }
+                            item._meta.refreshed = true;
+                            array_remove(names, item._name);
+                            break;
                         }
-                        item._meta.refreshed = true;
-                        array_remove(names, item._name);
-                        break;
                     }
                 }
-            }
 
-            for (let name of names) {
-                for (let item of items) {
-                    if (name == item._name) {
-                        item._meta.missing = true;
-                        break;
+                for (let name of names) {
+                    for (let item of items) {
+                        if (name == item._name) {
+                            item._meta.missing = true;
+                            break;
+                        }
                     }
                 }
+            } catch (error) {
+                console.error("Failed to refresh items from reddit API.");
+                console.error(error);
+                window.sessionStorage.removeItem("reddit_access_token");
             }
-        } catch (error) {
-            console.error("Failed to refresh items from reddit API.");
-            console.error(error);
-            window.sessionStorage.removeItem("reddit_access_token");
         }
 
         for (let item of items) {
