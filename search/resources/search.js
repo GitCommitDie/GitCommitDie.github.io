@@ -837,7 +837,9 @@ function updateInfo() {
     Array.from(gel("items").children).forEach((item) => {
         item.classList.remove("user-hidden-subreddit");
         item.classList.remove("user-hidden-author");
+        thing.classList.remove("acting-first");
     });
+    gel("load-more-button").classList.remove("acting-first");
 
     info.appendChild(
         cel(
