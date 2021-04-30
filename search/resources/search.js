@@ -124,7 +124,7 @@ function getInfoTags(item) {
                 ? celp("li", "VS", { classList: "full-type", title: "Video Submission" })
                 : item.is_gallery
                 ? celp("li", "GS", { classList: "full-type", title: "Gallery Submission" })
-                : item.is_poll
+                : item.poll_data
                 ? celp("li", "PS", { classList: "full-type", title: "Poll Submission" })
                 : item.url.match(/^https?:\/\/[iv]\.redd\.it\//)
                 ? celp("li", "MS", { classList: "full-type", title: "Media Submission" })
@@ -240,10 +240,12 @@ function getContent(item) {
                         }
                         return gallery.outerHTML;
                     } else if (item.is_video) {
-                        let s = `<video controls><source src="${item.media.reddit_video.fallback_url.split("?")[0]}"></video>`;
-                        // s += `<audio controls><source src="${
-                        //     item.media.reddit_video.fallback_url.replace(/DASH_[\w\d]+/, "DASH_audio").split("?")[0]
-                        // }"></audio>`;
+                        // let mergedUrl =
+                        //     "https://coddit.xyz/api/ffmpeg/merge?video=" +
+                        //     item.media.reddit_video.fallback_url +
+                        //     "&audio=" +
+                        //     item.media.reddit_video.fallback_url.replace(/DASH_[\w\d]+/, "DASH_audio");
+                        let s = `<video controls><source src="${item.media.reddit_video.fallback_url}"></video>`;
                         return s;
                     } else if (item.url.match(/\.(png|jpe?g|gif|webp|svg)$/)) {
                         return `<a href="${item.url}" target="_blank"><img src="${item.url}" alt="user generated image content"></a>`;
