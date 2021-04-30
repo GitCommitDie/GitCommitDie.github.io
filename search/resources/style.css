@@ -471,7 +471,8 @@ header form fieldset .form-field {
     display: none;
 }
 
-.item:first-child {
+.item:first-child,
+#items-panel .acting-first {
     margin-top: 0;
 }
 

@@ -887,6 +887,7 @@ function updateInfo() {
                         row.classList.remove(className);
                     }
                 }
+                let addedFirst = false;
                 for (let thing of gel("items").children) {
                     thing.classList.add(className);
                     for (let row of tbody.children) {
@@ -897,6 +898,23 @@ function updateInfo() {
                             thing.classList.remove(className);
                         }
                     }
+                    if (
+                        !addedFirst &&
+                        !thing.classList.contains("user-hidden-subreddit") &&
+                        !thing.classList.contains("user-hidden-author")
+                    ) {
+                        if (!gel("items").children[0].isSameNode(thing)) {
+                            thing.classList.add("acting-first");
+                        }
+                        addedFirst = true;
+                    } else {
+                        thing.classList.remove("acting-first");
+                    }
+                }
+                if (!addedFirst) {
+                    gel("load-more-button").classList.add("acting-first");
+                } else {
+                    gel("load-more-button").classList.remove("acting-first");
                 }
                 // gel("info-panel").scrollIntoView({ block: "start" });
             },
