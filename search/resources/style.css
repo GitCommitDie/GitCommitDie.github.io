@@ -480,6 +480,10 @@ header form fieldset .form-field {
     text-decoration: underline;
 }
 
+.item .entry {
+    display: inline-flex;
+}
+
 .item .thumbnail {
     min-width: 80px;
     margin: 0 8px -2px 0;
@@ -536,6 +540,10 @@ header form fieldset .form-field {
 
 .item.expandable:not(.expanded) .content {
     display: none;
+}
+
+body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
+    margin-top: 0;
 }
 
 .item .title {

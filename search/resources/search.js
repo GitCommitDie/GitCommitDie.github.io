@@ -260,7 +260,7 @@ function getContent(item) {
                 }
                 return `<a href="${item.url}">${item.url}</a>`;
             })(),
-            "content " + (empty ? "empty" : "")
+            ["content", empty ? "empty" : null]
         );
     }
 }
@@ -391,7 +391,7 @@ function getDisplayItem(item) {
                             cel("div", [getTitleContent(), getTagline(), getInfoTags(item)]),
                         ],
                         {
-                            style: "display: inline-flex;",
+                            classList: "entry",
                         }
                     ),
                     getContent(item),
@@ -890,15 +890,14 @@ function updateInfo() {
                     }
                 }
                 let addedFirst = false;
+                let allowed = Array.from(tbody.children)
+                    .filter((e) => !e.classList.contains(className))
+                    .map((e) => e.querySelector("td:first-of-type a").innerHTML);
                 for (let thing of gel("items").children) {
-                    thing.classList.add(className);
-                    for (let row of tbody.children) {
-                        if (
-                            !row.classList.contains(className) &&
-                            thing.dataset[property] == row.querySelector("td:first-of-type a").innerHTML
-                        ) {
-                            thing.classList.remove(className);
-                        }
+                    if (allowed.includes(thing.dataset[property])) {
+                        thing.classList.remove(className);
+                    } else {
+                        thing.classList.add(className);
                     }
                     if (
                         !addedFirst &&
@@ -923,6 +922,23 @@ function updateInfo() {
         });
     }
 
+    function getExpandButtons(tbody) {
+        let expandRow = cel("tr", [
+            cel("td", '<a href="javascript:void(0);">...</a>'),
+            cel("td", '<a href="javascript:void(0);">...</a>', "center"),
+            cel("td", '<a href="javascript:void(0);">...</a>', "center"),
+            cel("td", '<a href="javascript:void(0);">...</a>', "center"),
+        ]);
+
+        expandRow.onclick = () => {
+            for (let row of tbody.children) {
+                row.hidden = false;
+            }
+            expandRow.remove();
+        };
+        return expandRow;
+    }
+
     info.appendChild(
         cel("table", [
             cel("caption", "Subreddits • " + subreddits.length),
@@ -930,26 +946,22 @@ function updateInfo() {
             (function () {
                 let tbody = cel("tbody");
                 for (let subreddit of subreddits) {
-                    tbody.appendChild(
-                        cel("tr", [
-                            cel("td", getListToggleButton(tbody, subreddit.name, "user-hidden-subreddit", "subreddit")),
-                            cel("td", subreddit.contributions, "center"),
-                            cel("td", subreddit.submissions, "center"),
-                            cel("td", subreddit.comments, "center"),
-                        ])
-                    );
-                    if (tbody.childElementCount > 24) {
-                        tbody.appendChild(
-                            cel("tr", [
-                                cel("td", "<a>...</a>"),
-                                cel("td", "<a>...</a>", "center"),
-                                cel("td", "<a>...</a>", "center"),
-                                cel("td", "<a>...</a>", "center"),
-                            ])
-                        );
-                        break;
+                    let row = cel("tr", [
+                        cel("td", getListToggleButton(tbody, subreddit.name, "user-hidden-subreddit", "subreddit")),
+                        cel("td", subreddit.contributions, "center"),
+                        cel("td", subreddit.submissions, "center"),
+                        cel("td", subreddit.comments, "center"),
+                    ]);
+                    tbody.appendChild(row);
+                    if (tbody.childElementCount > 25) {
+                        row.hidden = true;
                     }
                 }
+
+                if (tbody.childElementCount > 25) {
+                    tbody.appendChild(getExpandButtons(tbody));
+                }
+
                 return tbody;
             })(),
         ])
@@ -962,26 +974,22 @@ function updateInfo() {
             (function () {
                 let tbody = cel("tbody");
                 for (let author of authors) {
-                    tbody.appendChild(
-                        cel("tr", [
-                            cel("td", getListToggleButton(tbody, author.name, "user-hidden-author", "author")),
-                            cel("td", author.contributions, "center"),
-                            cel("td", author.submissions, "center"),
-                            cel("td", author.comments, "center"),
-                        ])
-                    );
-                    if (tbody.childElementCount > 24) {
-                        tbody.appendChild(
-                            cel("tr", [
-                                cel("td", "<a>...</a>"),
-                                cel("td", "<a>...</a>", "center"),
-                                cel("td", "<a>...</a>", "center"),
-                                cel("td", "<a>...</a>", "center"),
-                            ])
-                        );
-                        break;
+                    let row = cel("tr", [
+                        cel("td", getListToggleButton(tbody, author.name, "user-hidden-subreddit", "subreddit")),
+                        cel("td", author.contributions, "center"),
+                        cel("td", author.submissions, "center"),
+                        cel("td", author.comments, "center"),
+                    ]);
+                    tbody.appendChild(row);
+                    if (tbody.childElementCount > 25) {
+                        row.hidden = true;
                     }
                 }
+
+                if (tbody.childElementCount > 25) {
+                    tbody.appendChild(getExpandButtons(tbody));
+                }
+
                 return tbody;
             })(),
         ])
