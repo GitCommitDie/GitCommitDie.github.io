@@ -116,7 +116,7 @@ function getInfoTags(item) {
         [
             (item.name || item._name).startsWith("t1_")
                 ? item.parent_id.startsWith("t1_")
-                    ? celp("li", "C", { classList: "full-type", title: "Comment" })
+                    ? celp("li", "C", { classList: "full-type", title: "Comment Reply" })
                     : celp("li", "TC", { classList: "full-type", title: "Top-Level Comment" })
                 : item.is_self
                 ? celp("li", "TS", { classList: "full-type", title: "Self-Post Submission" })
@@ -132,7 +132,7 @@ function getInfoTags(item) {
             item.score != null
                 ? celp("li", abbreviateNumber(item.score), {
                       classList: "score",
-                      title: commaSeparateNumber(item.score) + " upvote" + (item.score != 1 ? "s" : ""),
+                      title: commaSeparateNumber(item.score) + " Upvote" + (item.score != 1 ? "s" : ""),
                   })
                 : null,
             item.all_awardings && item.all_awardings.length // item.all_awardings?.length
@@ -140,29 +140,37 @@ function getInfoTags(item) {
                       classList: "award-count",
                       title:
                           commaSeparateNumber(item.all_awardings.length) +
-                          " award" +
+                          " Award" +
                           (item.all_awardings.length != 1 ? "s" : ""),
                   })
                 : null,
             item.num_comments != null
                 ? celp("li", commaSeparateNumber(item.num_comments), {
                       classList: "comment-count",
-                      title: commaSeparateNumber(item.num_comments) + " comment" + (item.num_comments != 1 ? "s" : ""),
+                      title: commaSeparateNumber(item.num_comments) + " Comment" + (item.num_comments != 1 ? "s" : ""),
                   })
                 : null,
-            item.over_18 ? cel("li", "NSFW", "tag nsfw") : null,
-            item.spoiler ? cel("li", "Spoiler", "tag spoiler") : null,
-            item.distinguished ? cel("li", "Distinguished", "tag distinguished") : null,
-            item.stickied ? cel("li", cel("strong", "Stickied"), "tag stickied") : null,
-            item.locked ? cel("li", "Locked", "tag locked") : null,
+            item.over_18 ? celp("li", "NSFW", { classList: "tag nsfw", title: "Tagged as NSFW" }) : null,
+            item.spoiler ? celp("li", "Spoiler", { classList: "tag spoiler", title: "Tagged as Spoiler" }) : null,
+            item.distinguished
+                ? celp("li", "Distinguished", {
+                      classList: "tag distinguished " + item.distinguished,
+                      title: "Distinguished as " + item.distinguished.charAt(0).toUpperCase() + item.distinguished.slice(1),
+                  })
+                : null,
+            item.stickied ? celp("li", "Stickied", { classList: "tag stickied", title: "Pinned by Moderator" }) : null,
+            item.locked ? celp("li", "Locked", { classList: "tag locked", title: "Locked by Moderator" }) : null,
             item._meta.state == "deleted"
-                ? cel("li", "Deleted", "tag deleted")
+                ? celp("li", "Deleted", { classList: "tag deleted", title: "Deleted by Author" })
                 : item._meta.state == "removed moderator"
-                ? cel("li", "Removed by Moderator", "tag removed")
+                ? celp("li", "Removed by Moderator", {
+                      classList: "tag removed moderator",
+                      title: "Removed by Subreddit Moderator",
+                  })
                 : item._meta.state == "removed reddit"
-                ? cel("li", "Removed by Reddit", "tag removed")
+                ? celp("li", "Removed by Reddit", { classList: "tag removed reddit", title: "Removed by Reddit" })
                 : item._meta.state.startsWith("removed")
-                ? cel("li", "Removed", "tag removed")
+                ? celp("li", "Removed", { classList: "tag removed", title: "Removed" })
                 : item._meta.state == "missing"
                 ? celp("li", "Missing", { classList: "tag warn", title: "Item could not be found on Reddit." })
                 : null,
@@ -296,7 +304,11 @@ function getDisplayItem(item) {
                     }
                 }
                 return string;
-            })()}</a>` + (item.link_flair_text ? `<span class="flair">${item.link_flair_text}</span>` : ""),
+            })()}</a>` +
+                (item.link_flair_text ? `<span class="flair">${item.link_flair_text}</span>` : "") +
+                (item.domain
+                    ? `<a href="https://www.reddit.com/domain/${item.domain}/" class="domain">(${item.domain})</a>`
+                    : ""),
             "title"
         );
     }
@@ -394,7 +406,7 @@ function getDisplayItem(item) {
                     "item",
                     "thing",
                     "submission",
-                    useThumbnail ? "expandable" : null,
+                    item.is_self ? null : "expandable",
                     item.removed_by_category == "deleted" ? "deleted" : null,
                     item.is_self ? "self" : "link",
                     item.over_18 ? "nsfw" : null,
@@ -507,10 +519,10 @@ async function fetchItems(endpoint, params) {
 
     callParams.set("limit", 100);
 
-    let apiEndpoint =
-        urlParams.get("meta_api") == "coddit"
-            ? `https://coddit.xyz/modtools/api/db/basicquery/${endpoint}`
-            : `https://api.pushshift.io/reddit/search/${endpoint}/`;
+    let apiEndpoint = `https://api.pushshift.io/reddit/search/${endpoint}/`;
+    if (urlParams.get("meta_api") == "coddit") {
+        apiEndpoint = `https://coddit.xyz/modtools/api/db/basicquery/${endpoint}`;
+    }
 
     let fetchURL = apiEndpoint + (callParams.toString() ? "?" + callParams.toString() : "");
 
@@ -529,6 +541,10 @@ async function fetchItems(endpoint, params) {
         const data = await response.json();
 
         let items = data.data;
+
+        if (items.children) {
+            items = items.children.map((item) => item.data);
+        }
 
         let names = [];
 
@@ -551,14 +567,14 @@ async function fetchItems(endpoint, params) {
         const refresh_response = await fetch(refreshURL);
         const refresh_data = await refresh_response.json();
 
-        for (let refreshed_item of refresh_data.data.children) {
-            refreshed_item = refreshed_item.data;
+        for (let refreshedItem of refresh_data.data.children) {
+            refreshedItem = refreshedItem.data;
             for (let item of items) {
-                if (refreshed_item.name == item._name) {
+                if (refreshedItem.name == item._name) {
                     item._refreshed_properties = {};
-                    for (const [key, value] of Object.entries(refreshed_item)) {
+                    for (const [key, value] of Object.entries(refreshedItem)) {
                         if (!["author", "selftext", "body", "selftext_html", "body_html", "distinguished"].includes(key)) {
-                            if (!(refreshed_item.author == "[deleted]" && refreshed_item[key] == null)) {
+                            if (!(refreshedItem.author == "[deleted]" && refreshedItem[key] == null)) {
                                 item[key] = value;
                             }
                         } else if (["selftext_html", "body_html"].includes(key)) {
@@ -1180,60 +1196,93 @@ if (window.location.href.split("?").length > 1) {
     };
 }
 
-qels("[data-dependent-on]").forEach((element) => {
-    let conditions = [];
+qels("[data-disable-on], [data-hide-on], [data-reset-on]").forEach((element) => {
+    for (let category of ["disable", "hide", "reset"]) {
+        if (!element.dataset[category + "On"]) {
+            continue;
+        }
 
-    for (let condition of element.dataset.dependentOn.split(";")) {
-        let inverted = condition.match(/[^=]+!=/) ? true : false;
-        let requirementDetails = condition.split(/!?=/);
-        if (requirementDetails.length == 1) {
-            if (requirementDetails[0].startsWith("!")) {
-                inverted = true;
-                requirementDetails[0] = requirementDetails[0].substring(1);
+        let conditions = [];
+
+        for (let condition of element.dataset[category + "On"].split(";")) {
+            let inverted = condition.match(/[^=]+!=/) ? true : false;
+            let requirementDetails = condition.split(/!?=/);
+            if (requirementDetails.length == 1) {
+                if (requirementDetails[0].startsWith("!")) {
+                    inverted = true;
+                    requirementDetails[0] = requirementDetails[0].substring(1);
+                }
+            }
+            let requirementInput = gel(requirementDetails[0]);
+            let requirementValue = requirementDetails.slice(1).join("");
+
+            let newCondition = { requirementInput, requirementValue, inverted };
+
+            conditions.push(newCondition);
+
+            validateRequirements();
+
+            requirementInput.addEventListener(
+                requirementInput.tagName == "SELECT" || requirementInput.type == "checkbox" ? "change" : "keyup",
+                () => {
+                    validateRequirements();
+                }
+            );
+        }
+
+        function onTrue() {
+            switch (category) {
+                case "disable":
+                    element.disabled = true;
+                    break;
+                case "hide":
+                    element.hidden = true;
+                    break;
+                case "reset":
+                    element.value = element.defaultValue;
+                    break;
             }
         }
-        let requirementInput = gel(requirementDetails[0]);
-        let requirementValue = requirementDetails.slice(1).join("");
 
-        let newCondition = { requirementInput, requirementValue, inverted };
-
-        conditions.push(newCondition);
-
-        validateRequirements();
-
-        requirementInput.addEventListener(
-            requirementInput.tagName == "SELECT" || requirementInput.type == "checkbox" ? "change" : "keyup",
-            () => {
-                validateRequirements();
+        function onFalse() {
+            switch (category) {
+                case "disable":
+                    element.disabled = false;
+                    break;
+                case "hide":
+                    element.hidden = false;
+                    break;
+                case "reset":
+                    break;
             }
-        );
-    }
+        }
 
-    function validateRequirements() {
-        element.disabled = false;
-        for (let condition of conditions) {
-            if (condition.requirementValue) {
-                if (!condition.inverted) {
-                    if (!condition.requirementInput.value.match(condition.requirementValue)) {
-                        element.disabled = true;
-                        return;
+        function validateRequirements() {
+            onFalse();
+            for (let condition of conditions) {
+                if (condition.requirementValue) {
+                    if (!condition.inverted) {
+                        if (!condition.requirementInput.value.match(condition.requirementValue)) {
+                            onTrue();
+                            return;
+                        }
+                    } else {
+                        if (condition.requirementInput.value.match(condition.requirementValue)) {
+                            onTrue();
+                            return;
+                        }
                     }
                 } else {
-                    if (condition.requirementInput.value.match(condition.requirementValue)) {
-                        element.disabled = true;
-                        return;
-                    }
-                }
-            } else {
-                if (!condition.inverted) {
-                    if (!condition.requirementInput.value) {
-                        element.disabled = true;
-                        return;
-                    }
-                } else {
-                    if (condition.requirementInput.value) {
-                        element.disabled = true;
-                        return;
+                    if (!condition.inverted) {
+                        if (!condition.requirementInput.value) {
+                            onTrue();
+                            return;
+                        }
+                    } else {
+                        if (condition.requirementInput.value) {
+                            onTrue();
+                            return;
+                        }
                     }
                 }
             }

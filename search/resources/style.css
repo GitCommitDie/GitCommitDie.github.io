@@ -543,6 +543,13 @@ header form fieldset .form-field {
     overflow-wrap: break-word;
 }
 
+.item .domain {
+    margin-left: 8px;
+    color: #888;
+    font-size: 0.75em;
+    font-weight: lighter;
+}
+
 .item .tagline {
     margin: 4px 0;
     color: #888;
