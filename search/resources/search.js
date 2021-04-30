@@ -498,6 +498,39 @@ function validateItem(item, params) {
     ].every((check) => check());
 }
 
+async function getAccessToken() {
+    let existingToken = window.sessionStorage.getItem("reddit_access_token")
+        ? JSON.parse(window.sessionStorage.getItem("reddit_access_token"))
+        : null;
+    if (!existingToken || existingToken.expires_at <= time()) {
+        console.log("fetching access token...");
+        const auth_response = await fetch("https://www.reddit.com/api/v1/access_token", {
+            method: "POST",
+            body: "grant_type=https://oauth.reddit.com/grants/installed_client&device_id=DO_NOT_TRACK_THIS_DEVICE",
+            headers: {
+                Authorization: "Basic " + btoa("RiVhJeKtPDdCOA:"),
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        });
+
+        if (!auth_response.ok) {
+            throw new Error("Non-2xx response for reddit authentication.");
+        }
+
+        const auth_data = await auth_response.json();
+
+        if (auth_data.access_token) {
+            auth_data.expires_at = time() + auth_data.expires_in;
+            window.sessionStorage.setItem("reddit_access_token", JSON.stringify(auth_data));
+            return auth_data.access_token;
+        } else {
+            throw new Error("Missing access token.");
+        }
+    } else {
+        return existingToken.access_token;
+    }
+}
+
 async function fetchItems(endpoint, params) {
     params = new URLSearchParams(params.toString());
 
@@ -563,11 +596,16 @@ async function fetchItems(endpoint, params) {
             names.push(item._name);
         });
 
-        let refreshURL = "https://api.reddit.com/api/info?id=" + names.join(",");
-
         try {
+            let refreshURL = "https://oauth.reddit.com/api/info?id=" + names.join(",");
+
             console.log("fetching " + refreshURL + "...");
-            const refresh_response = await fetch(refreshURL);
+
+            const refresh_response = await fetch(refreshURL, {
+                headers: {
+                    Authorization: "Bearer " + (await getAccessToken()),
+                },
+            });
             const refresh_data = await refresh_response.json();
 
             for (let refreshedItem of refresh_data.data.children) {
@@ -608,6 +646,7 @@ async function fetchItems(endpoint, params) {
         } catch (error) {
             console.error("Failed to refresh items from reddit API.");
             console.error(error);
+            window.sessionStorage.removeItem("reddit_access_token");
         }
 
         for (let item of items) {
