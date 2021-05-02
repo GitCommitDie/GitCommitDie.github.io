@@ -1226,6 +1226,10 @@ gel("request-form").onsubmit = (event) => {
     });
 };
 
+if (gel("notice")) {
+    if (!getCookie("read_notice")) gel("notice").hidden = false;
+}
+
 qels(".panel-header").forEach((element) => {
     element.onclick = () => {
         let parent = element.parentElement;
