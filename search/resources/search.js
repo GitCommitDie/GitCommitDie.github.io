@@ -390,8 +390,6 @@ function getDisplayItem(item) {
             if (useThumbnail) {
                 if (item.over_18 && settings.hideNSFW) {
                     useThumbnail = false;
-                } else if (item._meta.state != "live" && item.domain.match(/redd\.it/)) {
-                    useThumbnail = false;
                 }
             }
             displayItem = celwa(
