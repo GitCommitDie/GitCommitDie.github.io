@@ -808,11 +808,11 @@ function getPageTitle() {
         title += 'Matching "' + urlParams.get("q") + '"';
     }
 
-    return title + " - Coddit ReSearch Results";
+    return title + " - Coddit Search Results";
 }
 
 async function processQueue() {
-    document.title = "Search Results - Coddit ReSearch";
+    document.title = "Search Results - Coddit Search";
     gel("parameters-panel").classList.add("collapsed");
     gel("items-panel").classList.remove("collapsed");
     gel("load-more-button").hidden = true;
