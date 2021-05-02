@@ -3,6 +3,22 @@
  *
  */
 
+fetch(`https://coddit.xyz/api/analytics/ping?u=${encodeURIComponent(window.location.href)}`)
+    .then((res) => {
+        if (!res.ok) {
+            throw new Error("Coddit API responded not okay.");
+        }
+        return res.json();
+    })
+    .then((data) => {
+        if (data.status != "OK") {
+            throw new Error("Coddit API responded not okay.");
+        }
+    })
+    .catch((error) => {
+        console.warn(error);
+    });
+
 const urlParams = new URLSearchParams(window.location.search);
 
 var settings = {
