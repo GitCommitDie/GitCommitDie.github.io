@@ -139,8 +139,6 @@ function getInfoTags(item) {
                 ? item.parent_id.startsWith("t1_")
                     ? celp("li", "C", { classList: "full-type", title: "Comment Reply" })
                     : celp("li", "TC", { classList: "full-type", title: "Top-Level Comment" })
-                : item.is_self
-                ? celp("li", "TS", { classList: "full-type", title: "Self-Post Submission" })
                 : item.is_video
                 ? celp("li", "VS", { classList: "full-type", title: "Video Submission" })
                 : item.is_gallery
@@ -149,11 +147,19 @@ function getInfoTags(item) {
                 ? celp("li", "PS", { classList: "full-type", title: "Poll Submission" })
                 : item.url.match(/^https?:\/\/[iv]\.redd\.it\//)
                 ? celp("li", "MS", { classList: "full-type", title: "Media Submission" })
+                : item.is_self
+                ? celp("li", "TS", { classList: "full-type", title: "Self-Post Submission" })
                 : celp("li", "LS", { classList: "full-type", title: "Link Submission" }),
             item.score != null
                 ? celp("li", abbreviateNumber(item.score), {
                       classList: "score",
                       title: commaSeparateNumber(item.score) + " Upvote" + (item.score != 1 ? "s" : ""),
+                  })
+                : null,
+            item.upvote_ratio
+                ? celp("li", parseInt(item.upvote_ratio * 100) + "%", {
+                      classList: "upvote-ratio",
+                      title: parseInt(item.upvote_ratio * 100) + "% Upvoted",
                   })
                 : null,
             item.all_awardings && item.all_awardings.length // item.all_awardings?.length
@@ -502,7 +508,8 @@ function validateItem(item, params) {
     function checkState() {
         let valid = true;
         if (urlParams.has("meta_state")) {
-            valid = urlParams.get("meta_state").split(/[,+ ]/).includes(item._meta.state);
+            console.log(item._meta.state);
+            valid = urlParams.get("meta_state").split(/[,+ ]/).includes(item._meta.state.split(/\s/)[0]);
         }
         return valid;
     }
