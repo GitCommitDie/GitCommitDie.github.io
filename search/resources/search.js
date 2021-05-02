@@ -1123,8 +1123,9 @@ qels("select").forEach((element) => {
 });
 
 function updateOptions(event) {
-    let api = search.api ? gel("p-meta_api").value : urlParams.get("meta_api") || gel("p-meta_api").defaultValue;
+    let api = urlParams.get("meta_api") || gel("p-meta_api").defaultValue;
     if (event) {
+        api = gel("p-meta_api").value;
         if (api == "coddit") {
             alert(
                 "NOTICE: The coddit statistics API is not a Pushshift equivalent.\n\nIts primary purpose is to provide subreddit analytics and moderation utilities for r/teenagers. It only contains data from a few select subreddits and does not support full text search or many of the other parameters available with Pushshift."
@@ -1132,8 +1133,10 @@ function updateOptions(event) {
         }
     }
     if (api == "reddit") {
+        gel("p-q").required = true;
         gel("p-size").name = "limit";
     } else {
+        gel("p-q").required = false;
         gel("p-size").name = "size";
     }
     for (let duplicateKey of ["sort"]) {
@@ -1146,8 +1149,10 @@ function updateOptions(event) {
 updateOptions();
 
 gel("p-meta_api").onchange = updateOptions;
-gel("form-reset").onclick = () => {
-    updateOptions();
+gel("form-reset").onclick = (event) => {
+    setTimeout(() => {
+        updateOptions(event);
+    }, 0);
 };
 
 loadSettings();
