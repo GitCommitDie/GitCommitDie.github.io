@@ -6,7 +6,7 @@
 }
 
 body {
-    margin: 8px;
+    margin: 0;
     background-color: #080808;
     color: #eee;
     font-family: "Roboto", sans-serif;
@@ -65,6 +65,14 @@ fieldset {
     margin: 0;
     padding: 0;
     border: 0;
+}
+
+section h2 {
+    margin: 16px 0;
+}
+
+section h3 {
+    margin: 8px 0;
 }
 
 section p a {
@@ -159,6 +167,17 @@ input[type="text"] {
 
 input.small {
     width: 120px;
+}
+
+header,
+main,
+.content-wrapper {
+    width: 60%;
+    margin: auto;
+}
+
+header {
+    margin: 16px auto;
 }
 
 .select {
@@ -270,12 +289,6 @@ input:disabled > .checkmark {
     transform: rotate(45deg);
 }
 
-header,
-main {
-    width: 60%;
-    margin: auto;
-}
-
 @media (min-width: 1600px) {
     #info-panel {
         position: absolute;
@@ -360,34 +373,34 @@ header nav ul li a.current {
     border-bottom: 4px solid #eee;
 }
 
-header form :is(select, button, input:not([type="submit"]):not([type="reset"]), .select) {
+#request-form :is(select, button, input:not([type="submit"]):not([type="reset"]), .select) {
     height: 28px;
     min-height: 28px;
     max-height: 28px;
     min-width: 60px;
 }
 
-header form input[type="submit"],
-header form input[type="reset"] {
+#request-form input[type="submit"],
+#request-form input[type="reset"] {
     padding: 8px 16px;
     font-size: 1em;
 }
 
-header form input[type="reset"] {
+#request-form input[type="reset"] {
     background-color: #151515;
     margin-right: 8px;
 }
 
-header form input[type="reset"]:hover {
+#request-form input[type="reset"]:hover {
     background-color: #1a1a1a;
 }
 
-header form fieldset {
+#request-form fieldset {
     display: flex;
     flex-wrap: wrap;
 }
 
-header form fieldset .form-field {
+#request-form fieldset .form-field {
     margin-right: 4px;
 }
 
@@ -889,10 +902,6 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
     border-radius: 8px;
 }
 
-body:not(.setting-advanced) .advanced-option {
-    display: none;
-}
-
 .status::before {
     content: "● ";
 }
@@ -934,8 +943,12 @@ body:not(.setting-advanced) .advanced-option {
     }
 }
 
+body:not(.setting-advanced) .advanced-option {
+    display: none !important;
+}
+
 body:not(.setting-dev) .dev-option {
-    display: none;
+    display: none !important;
 }
 
 .inline {
@@ -975,6 +988,12 @@ body:not(.setting-dev) .dev-option {
 
 ::-webkit-scrollbar-corner {
     display: none;
+}
+
+.loading-icon {
+    height: 2em;
+    vertical-align: middle;
+    margin: 0 16px 2px 0;
 }
 
 table.property-table {
@@ -1113,7 +1132,8 @@ table.property-table {
 
 @media (max-width: 1000px) {
     header,
-    main {
+    main,
+    .content-wrapper {
         width: 80%;
         margin: auto;
     }
@@ -1121,7 +1141,8 @@ table.property-table {
 
 @media (max-width: 800px) {
     header,
-    main {
+    main,
+    .content-wrapper {
         width: 100%;
         margin: auto;
     }
@@ -1134,19 +1155,19 @@ table.property-table {
         margin: 8px;
     }
 
-    header form fieldset .form-field {
+    #request-form fieldset .form-field {
         flex-grow: 1;
     }
 
-    header form fieldset .form-field > :is(input, select, button, .select) {
+    #request-form fieldset .form-field > :is(input, select, button, .select) {
         width: 100%;
     }
 
-    header form fieldset .form-field .select select {
+    #request-form fieldset .form-field .select select {
         width: calc(100% - 2px);
     }
 
-    header form .parameter-q {
+    #request-form .parameter-q {
         width: 100%;
     }
 }

@@ -3,12 +3,6 @@
  *
  */
 
-fetch(`https://coddit.xyz/api/analytics/ping?u=${encodeURIComponent(window.location.href)}`)
-    .then((res) => res.json())
-    .then((data) => {
-        if (data.status != "OK") console.warn("coddit API may be having issues");
-    });
-
 const urlParams = new URLSearchParams(window.location.search);
 
 var settings = {
@@ -18,9 +12,6 @@ var settings = {
     defaultPageSize: 25,
     refreshItems: true,
 };
-
-var loadedItems = [];
-var requestQueue = [];
 
 var cachedItems = {
     all: [],
@@ -37,7 +28,7 @@ var cachedItems = {
         }
     },
     addAll(items) {
-        returnedItems = [];
+        let returnedItems = [];
         for (let item of items) {
             item = this.add(item);
             if (item) returnedItems.add(item);
@@ -55,9 +46,20 @@ var cachedItems = {
     },
 };
 
-function getVisibleLimit() {
-    return (urlParams.get("limit") || settings.defaultPageSize) * gel("load-more-button").dataset.pageCount;
-}
+var requests = {
+    sources: [],
+    addSource(request) {
+        this.sources.push(request);
+    },
+};
+
+var search = {
+    get visibleLimit() {
+        return search.size != "none"
+            ? (search.size || settings.defaultPageSize) * gel("load-more-button").dataset.pageCount
+            : Infinity;
+    },
+};
 
 function appendItemProps(item, metadata) {
     if (item.fullname) {
@@ -98,8 +100,10 @@ function appendExtraProps(item) {
             ) {
                 item._meta.state = "removed maybe";
             } else if (
-                item.author == "[deleted]" ||
-                (item._refreshed_properties && item._refreshed_properties.author == "[deleted]")
+                (item.author == "[deleted]" && item.body == "[deleted]") ||
+                (item._refreshed_properties &&
+                    item._refreshed_properties.author == "[deleted]" &&
+                    item._refreshed_properties.body == "[deleted]")
             ) {
                 item._meta.state = "deleted";
             }
@@ -241,13 +245,7 @@ function getContent(item) {
                         }
                         return gallery.outerHTML;
                     } else if (item.is_video && item.media.reddit_video.fallback_url) {
-                        // let mergedUrl =
-                        //     "https://coddit.xyz/api/ffmpeg/merge?video=" +
-                        //     item.media.reddit_video.fallback_url +
-                        //     "&audio=" +
-                        //     item.media.reddit_video.fallback_url.replace(/DASH_[\w\d]+/, "DASH_audio");
-                        let s = `<video controls><source src="${item.media.reddit_video.fallback_url}"></video>`;
-                        return s;
+                        return `<video controls><source src="${item.media.reddit_video.fallback_url}"></video>`;
                     } else if (item.url.match(/\.(png|jpe?g|gif|webp|svg)$/)) {
                         return `<a href="${item.url}" target="_blank"><img src="${item.url}" alt="user generated image content"></a>`;
                     } else if (item.url.match(/\.(mp4|mov|webm)$/)) {
@@ -278,6 +276,7 @@ function getDisplayItem(item) {
         ["data-permalink", item.permalink],
         ["data-author", item.author],
         ["data-subreddit", item.subreddit],
+        ["id", "thing-" + item._name],
     ];
 
     function getTagline() {
@@ -534,162 +533,176 @@ async function getAccessToken() {
     }
 }
 
-async function fetchItems(endpoint, params) {
-    params = new URLSearchParams(params.toString());
-
-    let callParams = new URLSearchParams(params.toString());
-
-    // if (callParams.has("limit")) {
-    //     if (callParams.get("limit") != "none") {
-    //         callParams.set("limit", Math.min(callParams.get("limit"), 100));
-    //     } else {
-    //         callParams.set("limit", 100);
-    //     }
-    // }
-
-    // callParams.set(
-    //     "limit",
-    //     Math.min(
-    //         Math.max((callParams.get("limit") != "none" ? callParams.get("limit") : 100) || settings.defaultPageSize + 10, 10),
-    //         100
-    //     )
-    // ); // uh... idk.
-
-    callParams.set("limit", 100);
-
-    let apiEndpoint = `https://api.pushshift.io/reddit/search/${endpoint}/`;
-    if (urlParams.get("meta_api") == "coddit") {
-        apiEndpoint = `https://coddit.xyz/modtools/api/db/basicquery/${endpoint}`;
-    }
-
-    let fetchURL = apiEndpoint + (callParams.toString() ? "?" + callParams.toString() : "");
-
-    updateRequestTable(fetchURL, "pending");
-
+async function fetchItems(request) {
     try {
-        console.log("fetching " + fetchURL + "...");
-        const response = await fetch(fetchURL);
+        let params = new URLSearchParams(request.params.toString());
 
-        updateRequestTable(fetchURL, response.status);
+        let callParams = new URLSearchParams(params.toString());
 
-        if (!response.ok) {
-            throw new Error("Non-2xx response status from " + fetchURL);
+        let apiEndpoint = `https://api.pushshift.io/reddit/search/${request.type}/`;
+        let separator = "?";
+        let fetchOptions = {};
+
+        if (search.api == "coddit") {
+            apiEndpoint = `https://coddit.xyz/modtools/api/db/basicquery/${request.type}`;
+        } else if (search.api == "miser") {
+            apiEndpoint = `https://archivesort.org/discuss/reddit/miser?type=${request.type}s`;
+            separator = "&";
+        } else if (search.api == "reddit") {
+            apiEndpoint = `https://oauth.reddit.com/search`;
+            fetchOptions.headers = { Authorization: "Bearer " + (await getAccessToken()) };
         }
 
-        const data = await response.json();
-
-        let items = data.data;
-
-        if (items.children) {
-            items = items.children.map((item) => item.data);
+        if (["pushshift", "coddit"].includes(search.api)) {
+            callParams.set("size", 100);
+        } else if (["miser"].includes(search.api)) {
+            callParams.set("size", Math.min(parseInt(search.size), 1000));
+        } else if (["reddit"].includes(search.api)) {
+            callParams.set("limit", Math.min(parseInt(search.size), 100));
         }
 
-        let names = [];
+        let fetchURL = apiEndpoint + (callParams.toString() ? separator + callParams.toString() : "");
 
-        items.forEach((item) => {
-            item = appendItemProps(item, {
-                type: endpoint,
-                fetched_from: fetchURL,
-                request_id: qel("#request-table tbody").childElementCount,
-                sibling_count: items.length,
-                sibling_position: items.indexOf(item) + 1,
-                valid: false,
-                refreshed: false,
-            });
-            names.push(item._name);
-        });
+        updateRequestTable(fetchURL, "pending");
 
-        if (settings.refreshItems) {
-            try {
-                let refreshURL = "https://oauth.reddit.com/api/info?id=" + names.join(",");
+        try {
+            console.log("fetching " + fetchURL + "...");
+            const response = await fetch(fetchURL, fetchOptions);
 
-                console.log("fetching " + refreshURL + "...");
+            updateRequestTable(fetchURL, response.status);
 
-                const refresh_response = await fetch(refreshURL, {
-                    headers: {
-                        Authorization: "Bearer " + (await getAccessToken()),
-                    },
+            if (!response.ok) {
+                throw new Error("Non-2xx response status from: " + fetchURL);
+            }
+
+            const data = await response.json();
+
+            let items = data.data;
+
+            if (items.children) {
+                items = items.children.map((item) => item.data);
+            }
+
+            let names = [];
+            let uniqueTimestamps = [];
+
+            items.forEach((item) => {
+                item = appendItemProps(item, {
+                    type: request.type,
+                    fetched_from: fetchURL,
+                    request_id: qel("#request-table tbody").childElementCount,
+                    sibling_count: items.length,
+                    sibling_position: items.indexOf(item) + 1,
+                    valid: false,
+                    refreshed: false,
                 });
-                const refresh_data = await refresh_response.json();
+                names.push(item._name);
+                if (!uniqueTimestamps.includes(item.created_utc)) {
+                    uniqueTimestamps.push(item.created_utc);
+                }
+            });
 
-                for (let refreshedItem of refresh_data.data.children) {
-                    refreshedItem = refreshedItem.data;
-                    for (let item of items) {
-                        if (refreshedItem.name == item._name) {
-                            item._refreshed_properties = {};
-                            for (const [key, value] of Object.entries(refreshedItem)) {
-                                if (
-                                    !["author", "selftext", "body", "selftext_html", "body_html", "distinguished"].includes(key)
-                                ) {
-                                    if (!(refreshedItem.author == "[deleted]" && refreshedItem[key] == null)) {
+            if (uniqueTimestamps.length == 1) {
+                console.warn("Encountered second-segment with >=100 items. Accuracy may be affected.");
+            }
+
+            if (items.length && settings.refreshItems && search.api != "reddit") {
+                try {
+                    let refreshURL = "https://oauth.reddit.com/api/info?id=" + names.join(",");
+
+                    console.log("fetching " + refreshURL + "...");
+
+                    const refresh_response = await fetch(refreshURL, {
+                        headers: {
+                            Authorization: "Bearer " + (await getAccessToken()),
+                        },
+                    });
+                    const refresh_data = await refresh_response.json();
+
+                    for (let refreshedItem of refresh_data.data.children) {
+                        refreshedItem = refreshedItem.data;
+                        for (let item of items) {
+                            if (refreshedItem.name == item._name) {
+                                item._refreshed_properties = {};
+                                for (const [key, value] of Object.entries(refreshedItem)) {
+                                    if (
+                                        !["author", "selftext", "body", "selftext_html", "body_html", "distinguished"].includes(
+                                            key
+                                        )
+                                    ) {
+                                        if (!(refreshedItem.author == "[deleted]" && refreshedItem[key] == null)) {
+                                            item[key] = value;
+                                        }
+                                    } else if (["selftext_html", "body_html"].includes(key)) {
+                                        if (!item.hasOwnProperty(key.replace(/_html$/, ""))) {
+                                            item[key] = value;
+                                        }
+                                    } else if (!item.hasOwnProperty(key)) {
                                         item[key] = value;
+                                    } else {
+                                        item._refreshed_properties[key] = value;
                                     }
-                                } else if (["selftext_html", "body_html"].includes(key)) {
-                                    if (!item.hasOwnProperty(key.replace(/_html$/, ""))) {
-                                        item[key] = value;
-                                    }
-                                } else if (!item.hasOwnProperty(key)) {
-                                    item[key] = value;
-                                } else {
-                                    item._refreshed_properties[key] = value;
                                 }
+                                item._meta.refreshed = true;
+                                array_remove(names, item._name);
+                                break;
                             }
-                            item._meta.refreshed = true;
-                            array_remove(names, item._name);
-                            break;
                         }
                     }
-                }
 
-                for (let name of names) {
-                    for (let item of items) {
-                        if (name == item._name) {
-                            item._meta.missing = true;
-                            break;
+                    for (let name of names) {
+                        for (let item of items) {
+                            if (name == item._name) {
+                                item._meta.missing = true;
+                                break;
+                            }
                         }
                     }
+                } catch (error) {
+                    console.error("Failed to refresh items from reddit API.");
+                    console.error(error);
+                    window.sessionStorage.removeItem("reddit_access_token");
                 }
-            } catch (error) {
-                console.error("Failed to refresh items from reddit API.");
-                console.error(error);
-                window.sessionStorage.removeItem("reddit_access_token");
             }
-        }
 
-        for (let item of items) {
-            item = appendExtraProps(item);
-        }
-
-        newItems = items.filter((item) => !cachedItems.has(item));
-
-        for (let item of newItems) {
-            item._meta.valid = validateItem(item, params);
-            cachedItems.add(item);
-        }
-
-        if (
-            // lol
-            (params.get("limit") == "none" || cachedItems.valid.length < getVisibleLimit()) &&
-            items.length == callParams.get("limit") &&
-            newItems.length
-        ) {
-            if (params.has("sort") && params.get("sort") == "asc") {
-                params.set("after", items[items.length - 1].created_utc - 1);
-            } else {
-                params.set("before", items[items.length - 1].created_utc + 1);
+            for (let item of items) {
+                item = appendExtraProps(item);
             }
-            enqueue(endpoint, params);
+
+            let newItems = items.filter((item) => !cachedItems.has(item));
+
+            for (let item of newItems) {
+                item._meta.valid = validateItem(item, params);
+                cachedItems.add(item);
+            }
+
+            if (items.length >= (callParams.get("size") || callParams.get("limit")) && newItems.length) {
+                if (["pushshift", "coddit"].includes(search.api)) {
+                    if (search.sort == "asc") {
+                        params.set("after", items[items.length - 1].created_utc - (uniqueTimestamps.length != 1 ? 1 : 0)); // i don't like it either
+                    } else {
+                        params.set("before", items[items.length - 1].created_utc + (uniqueTimestamps.length != 1 ? 1 : 0));
+                    }
+                    return { next: { type: request.type, params } };
+                } else if (search.api == "reddit") {
+                    params.set("after", data.data.after);
+                    return { next: { type: request.type, params } };
+                }
+            }
+        } catch (error) {
+            updateRequestTable(fetchURL, "failed");
+            throw error;
         }
     } catch (error) {
         console.error(error);
-
-        updateRequestTable(fetchURL, "failed");
 
         gel("banner").innerHTML = "Error Loading Items: " + error.message || error;
         gel("banner").classList.add("failed");
 
         throw error;
     }
+
+    return { next: null };
 }
 
 function updateRequestTable(url, status) {
@@ -725,21 +738,12 @@ function updateRequestTable(url, status) {
     }
 }
 
-function enqueue(endpoint, params) {
-    requestQueue.push([endpoint, params]);
-}
-
-function getTitle() {
+function getPageTitle() {
     let title = "";
-    if (urlParams.has("meta_type")) {
-        let type = urlParams.get("meta_type");
-        if (type == "submission") {
-            title += "Submissions ";
-        } else if (type == "comment") {
-            title += "Comments ";
-        } else {
-            title += "Submissions and Comments ";
-        }
+    if (search.type == "submission") {
+        title += "Submissions ";
+    } else if (search.type == "comment") {
+        title += "Comments ";
     } else {
         title += "Submissions and Comments ";
     }
@@ -769,65 +773,68 @@ function getTitle() {
 
 async function processQueue() {
     document.title = "Search Results - Coddit ReSearch";
-
-    gel("items-panel").classList.remove("collapsed");
-
     gel("parameters-panel").classList.add("collapsed");
+    gel("items-panel").classList.remove("collapsed");
+    gel("load-more-button").hidden = true;
 
     gel(
         "banner"
-    ).innerHTML = `<img class="loading-icon" src="/search/static/CGH1e.png" style="height: 2em; vertical-align: middle; margin: 0 16px 2px 0;">Loading • Found <span class="loaded-count">0</span> Items`;
+    ).innerHTML = `<img class="loading-icon" src="/search/static/CGH1e.png">Loading • Found <span class="loaded-count">${cachedItems.valid.length}</span> Items`;
     gel("banner").hidden = false;
 
-    while ((nextRequest = requestQueue.shift())) {
-        let request = nextRequest;
+    while (
+        (search.size == "none" ||
+            cachedItems.valid.length < search.visibleLimit * requests.sources.filter((i) => i.next).length) &&
+        requests.sources.some((i) => i.next)
+    ) {
+        for (let i = 0; i < requests.sources.length; i++) {
+            let source = requests.sources[i];
+            if (!source.next) continue;
 
-        qel("#banner .loaded-count").innerHTML = cachedItems.valid.length;
+            let fetchResult = await fetchItems(source.next);
+            source.next = fetchResult.next;
 
-        await fetchItems(request[0], request[1]);
+            sortItems();
 
-        sortItems();
+            qel("#banner .loaded-count").innerHTML = cachedItems.valid.length;
 
-        if (requestQueue.length == 0) {
-            if (cachedItems.valid.length) {
-                gel("banner").hidden = true;
-                if (!request[1].has("ids") && cachedItems.valid.length >= getVisibleLimit()) {
-                    gel("load-more-button").hidden = false;
-                }
-            } else {
-                if (!gel("banner").classList.contains("failed")) gel("banner").innerHTML = "No Data";
+            if (i != requests.sources.length - 1) {
+                await sleep(1000);
             }
-            showItems();
-            updateInfo();
         }
+    }
 
-        await sleep(1000);
+    if (cachedItems.valid.length) {
+        gel("banner").hidden = true;
+        if (!search.narrow && cachedItems.valid.length >= search.visibleLimit) {
+            if (!["miser"].includes(search.api)) {
+                gel("load-more-button").hidden = false;
+            }
+        }
+    } else {
+        if (!gel("banner").classList.contains("failed")) gel("banner").innerHTML = "No Data";
+    }
+    showItems();
+    if (settings.advanced) {
+        updateInfo();
     }
 }
 
 function sortItems() {
     cachedItems.valid.sort((a, b) => {
-        if (urlParams.has("sort") && urlParams.get("sort") == "asc") {
+        if (search.sort == "asc") {
             return a.created_utc > b.created_utc ? 1 : b.created_utc > a.created_utc ? -1 : 0;
         } else {
             return a.created_utc < b.created_utc ? 1 : b.created_utc < a.created_utc ? -1 : 0;
         }
     });
-    // if (urlParams.has("limit")) {
-    //     if (urlParams.get("limit") != "none") {
-    //         cachedItems.valid = cachedItems.valid.slice(0, urlParams.get("limit") * gel("load-more-button").dataset.pageCount);
-    //     }
-    // } else {
-    //     cachedItems.valid = cachedItems.valid.slice(0, settings.defaultPageSize * gel("load-more-button").dataset.pageCount);
-    // }
 }
 
 function showItems() {
     let itemsContainer = gel("items");
-    // itemsContainer.innerHTML = "";
     for (let i = 0; i < cachedItems.valid.length; i++) {
         let item = cachedItems.valid[i];
-        if (i > getVisibleLimit() - 1) {
+        if (i > search.visibleLimit - 1) {
             break;
         }
         if (item._meta.shown) {
@@ -1049,38 +1056,162 @@ function updateInfo() {
     gel("info-panel").classList.remove("collapsed");
 }
 
-if (getCookie("search_preferences")) {
-    for (const [key, value] of Object.entries(JSON.parse(getCookie("search_preferences")))) {
-        settings[key] = value;
+function loadSettings() {
+    if (getCookie("search_preferences")) {
+        for (const [key, value] of Object.entries(JSON.parse(getCookie("search_preferences")))) {
+            settings[key] = value;
+        }
+    }
+
+    if (settings.advanced) {
+        document.body.classList.add("setting-advanced");
+    } else {
+        qels(".advanced-option input, .advanced-option select").forEach((element) => {
+            element.disabled = true;
+        });
+    }
+
+    if (settings.dev) {
+        document.body.classList.add("setting-dev");
+    } else {
+        qels(".dev-option input, .dev-option select").forEach((element) => {
+            element.disabled = true;
+        });
     }
 }
 
-if (settings.advanced) {
-    document.body.classList.add("setting-advanced");
-} else {
-    gels("advanced-option").forEach((element) => {
-        element.hidden = true;
+qels("input[type='checkbox']").forEach((element) => {
+    element.value = element.checked;
+    element.addEventListener("change", () => {
+        element.value = element.checked;
     });
-    qels(".advanced-option input, .advanced-option select").forEach((element) => {
-        element.disabled = true;
-    });
-}
+});
 
-if (settings.dev) {
-    document.body.classList.add("setting-dev");
-}
-
-gel("parameter-meta_api").onchange = (event) => {
-    if (event.target.value == "coddit") {
-        alert(
-            "NOTICE: The coddit statistics API is not a Pushshift equivalent.\n\nIts primary purpose is to provide subreddit analytics and moderation utilities for r/teenagers. It only contains data from a few select subreddits and does not support full text search or many of the other parameters available with Pushshift."
-        );
+qels("select").forEach((element) => {
+    element.defaultValue = element.value;
+    let p = element.parentElement;
+    if (p.classList.contains("select")) {
+        const ob = new MutationObserver(function (ms, ob) {
+            ms.forEach((m) => {
+                if (m.attributeName == "disabled") {
+                    if (element.disabled) {
+                        p.classList.add("disabled");
+                    } else {
+                        p.classList.remove("disabled");
+                    }
+                }
+            });
+        });
+        ob.observe(element, { attributes: true });
     }
+});
+
+function updateOptions(event) {
+    let api = search.api ? gel("p-meta_api").value : urlParams.get("meta_api") || gel("p-meta_api").defaultValue;
+    if (event) {
+        if (api == "coddit") {
+            alert(
+                "NOTICE: The coddit statistics API is not a Pushshift equivalent.\n\nIts primary purpose is to provide subreddit analytics and moderation utilities for r/teenagers. It only contains data from a few select subreddits and does not support full text search or many of the other parameters available with Pushshift."
+            );
+        }
+    }
+    if (api == "reddit") {
+        gel("p-size").name = "limit";
+    } else {
+        gel("p-size").name = "size";
+    }
+    for (let duplicateKey of ["sort"]) {
+        qels(`[name="${duplicateKey}"]`).forEach((e) => {
+            e.value = e.defaultValue;
+        });
+    }
+}
+
+updateOptions();
+
+gel("p-meta_api").onchange = updateOptions;
+gel("form-reset").onclick = () => {
+    updateOptions();
 };
 
+loadSettings();
+
+if (window.location.href.split("?").length > 1) {
+    search.type = urlParams.get("meta_type") || gel("p-meta_type").defaultValue;
+    search.api = urlParams.get("meta_api") || gel("p-meta_api").defaultValue;
+    search.size = urlParams.get("size") || urlParams.get("limit") || settings.defaultPageSize;
+    search.sort = urlParams.get("sort") || gel("p-standard-sort").defaultValue;
+    search.narrow = urlParams.has("ids") || urlParams.has("fullname");
+    search.params = new URLSearchParams(window.location.search);
+
+    qels("#request-form input, #request-form select").forEach((element) => {
+        let eqvParam = element.name.replace(/\[\]$/, "");
+        if (search.params.has(eqvParam)) {
+            if (element.name.match(/\[\]$/)) {
+                element.value = "";
+                for (const [key, value] of search.params.entries()) {
+                    if (key == element.name.replace(/\[\]$/, "")) {
+                        element.value += value + ";";
+                    }
+                }
+                element.value = element.value.substring(0, element.value.length - 1);
+            } else {
+                if (element.type == "checkbox") {
+                    element.checked = search.params.get(eqvParam) == "true";
+                } else {
+                    element.value = search.params.get(eqvParam);
+                }
+            }
+        }
+    });
+
+    ["before", "after"].forEach((parameter) => {
+        if (search.params.has(parameter) && search.params.get(parameter).match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+            search.params.set(parameter, Date.parse(search.params.get(parameter)) / 1000);
+        }
+    });
+
+    if (search.api == "reddit") {
+        search.type = "submission";
+    }
+
+    let queryParams = new URLSearchParams(
+        [...search.params.entries()]
+            .filter((param) => param[1] && !param[0].startsWith("meta_"))
+            .reduce((x, y) => {
+                return x + y[0] + "=" + encodeURIComponent(y[1]) + "&";
+            }, "?")
+    );
+
+    if (search.type == "any") {
+        requests.addSource({ next: { type: "submission", params: queryParams } });
+        requests.addSource({ next: { type: "comment", params: queryParams } });
+    } else {
+        requests.addSource({ next: { type: search.type, params: queryParams } });
+    }
+
+    processQueue();
+
+    if (["pushshift", "reddit", "coddit"].includes(search.api)) {
+        gel("load-more-button").innerHTML = "Load " + (search.sort == "asc" ? "After" : "Before");
+
+        gel("load-more-button").onclick = (event) => {
+            event.target.dataset.pageCount = parseInt(event.target.dataset.pageCount) + 1;
+            processQueue();
+        };
+    }
+}
+
 gel("request-form").onsubmit = (event) => {
+    if (gel("p-meta_api").value == "miser") {
+        if (!gel("p-q").value && !gel("p-author").value && !gel("p-subreddit").value) {
+            alert('The Miser API requires at least one of the following parameters to be set: "q", "author", "subreddit".');
+            event.preventDefault();
+            return;
+        }
+    }
     Array.from(event.target.querySelectorAll("input, select")).forEach((element) => {
-        if (!element.value || element.value == element.dataset.defaultValue || element.disabled) {
+        if (!element.value || (element.type != "checkbox" && element.value == element.defaultValue) || element.disabled) {
             element.name = "";
         }
 
@@ -1094,31 +1225,6 @@ gel("request-form").onsubmit = (event) => {
         }
     });
 };
-
-qels("input[type='checkbox']").forEach((element) => {
-    element.value = element.checked;
-    element.addEventListener("change", () => {
-        element.value = element.checked;
-    });
-});
-
-qels("select").forEach((e) => {
-    let p = e.parentElement;
-    if (p.classList.contains("select")) {
-        const ob = new MutationObserver(function (ms, ob) {
-            ms.forEach((m) => {
-                if (m.attributeName == "disabled") {
-                    if (e.disabled) {
-                        p.classList.add("disabled");
-                    } else {
-                        p.classList.remove("disabled");
-                    }
-                }
-            });
-        });
-        ob.observe(e, { attributes: true });
-    }
-});
 
 qels(".panel-header").forEach((element) => {
     element.onclick = () => {
@@ -1158,125 +1264,6 @@ gel("download-button").onclick = () => {
     downloadText(downloadString, "data.json");
 };
 
-if (window.location.href.split("?").length > 1) {
-    let params = new URLSearchParams(window.location.search);
-
-    let type = "any";
-
-    if (params.has("meta_type")) {
-        type = params.get("meta_type");
-    }
-
-    qels("#request-form input, #request-form select").forEach((element) => {
-        let eqvParam = element.id.replace(/^parameter-/, "");
-        if (params.has(eqvParam)) {
-            if (element.name.match(/\[\]$/)) {
-                element.value = "";
-                for (const [key, value] of params.entries()) {
-                    if (key == element.id.replace(/^parameter-/, "")) {
-                        element.value += value + ";";
-                    }
-                }
-                element.value = element.value.substring(0, element.value.length - 1);
-            } else {
-                if (element.type == "checkbox") {
-                    element.checked = params.get(eqvParam) == "true";
-                } else {
-                    element.value = params.get(eqvParam);
-                }
-            }
-        }
-    });
-
-    ["before", "after"].forEach((parameter) => {
-        if (params.has(parameter) && params.get(parameter).match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
-            params.set(parameter, Date.parse(params.get(parameter)) / 1000);
-        }
-    });
-
-    let queryParams = new URLSearchParams(
-        [...params.entries()]
-            .filter((param) => param[1] && !param[0].startsWith("meta_"))
-            .reduce((x, y) => {
-                return x + y[0] + "=" + encodeURIComponent(y[1]) + "&";
-            }, "?")
-    );
-
-    if (queryParams.has("q")) {
-        // i have no idea lmaoooooooooooooooooooooooooo
-        for (let term of queryParams.get("q").split("|")) {
-            queryTermParams = new URLSearchParams(queryParams.toString());
-            queryTermParams.set("q", term);
-            if (type == "any") {
-                enqueue("submission", queryTermParams);
-                enqueue("comment", queryTermParams);
-            } else {
-                enqueue(type, queryTermParams);
-            }
-        }
-    } else {
-        if (type == "any") {
-            enqueue("submission", queryParams);
-            enqueue("comment", queryParams);
-        } else {
-            enqueue(type, queryParams);
-        }
-    }
-
-    processQueue();
-
-    gel("load-more-button").innerHTML = "Load " + (queryParams.get("sort") == "asc" ? "After" : "Before");
-
-    gel("load-more-button").onclick = (event) => {
-        event.target.hidden = true;
-
-        event.target.dataset.pageCount = parseInt(event.target.dataset.pageCount) + 1;
-
-        let lastItem = cachedItems.valid[cachedItems.valid.length - 1];
-
-        // urlParams.set("meta_pages", urlParams.has("meta_pages") ? parseInt(urlParams.get("meta_pages")) + 1 : 2);
-        // window.history.pushState({}, document.title, window.location.href.split("?")[0] + "?" + urlParams.toString());
-
-        if (cachedItems.valid.length < getVisibleLimit() * (type == "any" ? 2 : 1)) {
-            if (queryParams.get("sort") == "asc") {
-                queryParams.set("after", lastItem.created_utc - 1);
-                queryParams.delete("before");
-            } else {
-                queryParams.set("before", lastItem.created_utc + 1);
-                queryParams.delete("after");
-            }
-
-            if (queryParams.has("q")) {
-                for (let term of queryParams.get("q").split("|")) {
-                    queryTermParams = new URLSearchParams(queryParams.toString());
-                    queryTermParams.set("q", term);
-                    if (type == "any") {
-                        enqueue("submission", queryTermParams);
-                        enqueue("comment", queryTermParams);
-                    } else {
-                        enqueue(type, queryTermParams);
-                    }
-                }
-            } else {
-                if (type == "any") {
-                    enqueue("submission", queryParams);
-                    enqueue("comment", queryParams);
-                } else {
-                    enqueue(type, queryParams);
-                }
-            }
-
-            processQueue();
-        } else {
-            showItems();
-            updateInfo();
-            if (!urlParams.has("ids") && cachedItems.valid.length >= getVisibleLimit()) {
-                gel("load-more-button").hidden = false;
-            }
-        }
-    };
-}
-
 qels("[data-disable-on], [data-hide-on], [data-reset-on]").forEach((element) => {
     for (let category of ["disable", "hide", "reset"]) {
         if (!element.dataset[category + "On"]) {
@@ -1303,21 +1290,29 @@ qels("[data-disable-on], [data-hide-on], [data-reset-on]").forEach((element) => 
 
             validateRequirements();
 
-            requirementInput.addEventListener(
-                requirementInput.tagName == "SELECT" || requirementInput.type == "checkbox" ? "change" : "keyup",
-                () => {
-                    validateRequirements();
-                }
-            );
+            if (requirementInput.tagName == "SELECT") {
+                requirementInput.addEventListener("change", validateRequirements);
+            } else {
+                requirementInput.addEventListener("keyup", validateRequirements);
+                requirementInput.addEventListener("change", validateRequirements);
+            }
         }
+
+        element.closest("form").addEventListener("reset", () => {
+            setTimeout(() => {
+                validateRequirements();
+            }, 0); // yes this is requited
+        });
 
         function onTrue() {
             switch (category) {
                 case "disable":
                     element.disabled = true;
+                    element.classList.add("data-disabled");
                     break;
                 case "hide":
                     element.hidden = true;
+                    element.classList.add("data-hidden");
                     break;
                 case "reset":
                     element.value = element.defaultValue;
@@ -1329,9 +1324,11 @@ qels("[data-disable-on], [data-hide-on], [data-reset-on]").forEach((element) => 
             switch (category) {
                 case "disable":
                     element.disabled = false;
+                    element.classList.remove("data-disabled");
                     break;
                 case "hide":
                     element.hidden = false;
+                    element.classList.remove("data-hidden");
                     break;
                 case "reset":
                     break;
@@ -1343,24 +1340,24 @@ qels("[data-disable-on], [data-hide-on], [data-reset-on]").forEach((element) => 
             for (let condition of conditions) {
                 if (condition.requirementValue) {
                     if (!condition.inverted) {
-                        if (!condition.requirementInput.value.match(condition.requirementValue)) {
+                        if (condition.requirementInput.value.match(condition.requirementValue)) {
                             onTrue();
                             return;
                         }
                     } else {
-                        if (condition.requirementInput.value.match(condition.requirementValue)) {
+                        if (!condition.requirementInput.value.match(condition.requirementValue)) {
                             onTrue();
                             return;
                         }
                     }
                 } else {
                     if (!condition.inverted) {
-                        if (!condition.requirementInput.value) {
+                        if (condition.requirementInput.value) {
                             onTrue();
                             return;
                         }
                     } else {
-                        if (condition.requirementInput.value) {
+                        if (!condition.requirementInput.value) {
                             onTrue();
                             return;
                         }
