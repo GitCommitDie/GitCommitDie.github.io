@@ -77,6 +77,61 @@ var search = {
     },
 };
 
+var reddit = {
+    client_id: "RiVhJeKtPDdCOA",
+    async getAccessToken() {
+        let existingToken = window.sessionStorage.getItem("reddit_access_token")
+            ? JSON.parse(window.sessionStorage.getItem("reddit_access_token"))
+            : null;
+        if (!existingToken || existingToken.expires_at <= time()) {
+            console.log("fetching access token...");
+            const auth_response = await fetch("https://www.reddit.com/api/v1/access_token", {
+                method: "POST",
+                body: "grant_type=https://oauth.reddit.com/grants/installed_client&device_id=DO_NOT_TRACK_THIS_DEVICE",
+                headers: {
+                    Authorization: "Basic " + btoa(this.client_id + ":"),
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+            });
+
+            if (!auth_response.ok) {
+                throw new Error("Non-2xx response for reddit authentication.");
+            }
+
+            const auth_data = await auth_response.json();
+
+            if (auth_data.access_token) {
+                let now = time();
+                auth_data.retrieved_at = now;
+                auth_data.expires_at = now + auth_data.expires_in;
+                window.sessionStorage.setItem("reddit_access_token", JSON.stringify(auth_data));
+                return auth_data.access_token;
+            } else {
+                throw new Error("Missing access token.");
+            }
+        } else {
+            return existingToken.access_token;
+        }
+    },
+    async get(path) {
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        let url = "https://oauth.reddit.com" + path;
+        const response = await fetch(url, {
+            headers: {
+                Authorization: "Bearer " + (await this.getAccessToken()),
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error("Non-2xx response from: " + url);
+        }
+
+        return await response.json();
+    },
+};
+
 function appendItemProps(item, metadata) {
     if (item.fullname) {
         item.id = item.fullname.split("_")[1];
@@ -521,39 +576,6 @@ function validateItem(item, params) {
     ].every((check) => check());
 }
 
-async function getAccessToken() {
-    let existingToken = window.sessionStorage.getItem("reddit_access_token")
-        ? JSON.parse(window.sessionStorage.getItem("reddit_access_token"))
-        : null;
-    if (!existingToken || existingToken.expires_at <= time()) {
-        console.log("fetching access token...");
-        const auth_response = await fetch("https://www.reddit.com/api/v1/access_token", {
-            method: "POST",
-            body: "grant_type=https://oauth.reddit.com/grants/installed_client&device_id=DO_NOT_TRACK_THIS_DEVICE",
-            headers: {
-                Authorization: "Basic " + btoa("RiVhJeKtPDdCOA:"),
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-        });
-
-        if (!auth_response.ok) {
-            throw new Error("Non-2xx response for reddit authentication.");
-        }
-
-        const auth_data = await auth_response.json();
-
-        if (auth_data.access_token) {
-            auth_data.expires_at = time() + auth_data.expires_in;
-            window.sessionStorage.setItem("reddit_access_token", JSON.stringify(auth_data));
-            return auth_data.access_token;
-        } else {
-            throw new Error("Missing access token.");
-        }
-    } else {
-        return existingToken.access_token;
-    }
-}
-
 async function fetchItems(request) {
     try {
         let params = new URLSearchParams(request.params.toString());
@@ -571,15 +593,15 @@ async function fetchItems(request) {
             separator = "&";
         } else if (search.api == "reddit") {
             apiEndpoint = `https://oauth.reddit.com/search`;
-            fetchOptions.headers = { Authorization: "Bearer " + (await getAccessToken()) };
+            fetchOptions.headers = { Authorization: "Bearer " + (await reddit.getAccessToken()) };
         }
 
         if (["pushshift", "coddit"].includes(search.api)) {
             callParams.set("size", 100);
         } else if (["miser"].includes(search.api)) {
-            callParams.set("size", Math.min(parseInt(search.size), 1000));
+            callParams.set("size", search.size != "none" ? Math.min(parseInt(search.size), 1000) : 1000);
         } else if (["reddit"].includes(search.api)) {
-            callParams.set("limit", Math.min(parseInt(search.size), 100));
+            callParams.set("limit", search.size != "none" ? Math.min(parseInt(search.size), 100) : 100);
         }
 
         let fetchURL = apiEndpoint + (callParams.toString() ? separator + callParams.toString() : "");
@@ -633,12 +655,7 @@ async function fetchItems(request) {
 
                     console.log("fetching " + refreshURL + "...");
 
-                    const refresh_response = await fetch(refreshURL, {
-                        headers: {
-                            Authorization: "Bearer " + (await getAccessToken()),
-                        },
-                    });
-                    const refresh_data = await refresh_response.json();
+                    const refresh_data = await reddit.get("/api/info?id=" + names.join(","));
 
                     for (let refreshedItem of refresh_data.data.children) {
                         refreshedItem = refreshedItem.data;
@@ -698,7 +715,7 @@ async function fetchItems(request) {
             }
 
             if (items.length >= (callParams.get("size") || callParams.get("limit")) && newItems.length) {
-                if (["pushshift", "coddit"].includes(search.api)) {
+                if (["pushshift", "coddit", "miser"].includes(search.api)) {
                     if (search.sort == "asc") {
                         params.set("after", items[items.length - 1].created_utc - (uniqueTimestamps.length != 1 ? 1 : 0)); // i don't like it either
                     } else {
@@ -706,8 +723,10 @@ async function fetchItems(request) {
                     }
                     return { next: { type: request.type, params } };
                 } else if (search.api == "reddit") {
-                    params.set("after", data.data.after);
-                    return { next: { type: request.type, params } };
+                    if (data.data.after) {
+                        params.set("after", data.data.after);
+                        return { next: { type: request.type, params } };
+                    }
                 }
             }
         } catch (error) {
@@ -828,9 +847,7 @@ async function processQueue() {
     if (cachedItems.valid.length) {
         gel("banner").hidden = true;
         if (!search.narrow && cachedItems.valid.length >= search.visibleLimit) {
-            if (!["miser"].includes(search.api)) {
-                gel("load-more-button").hidden = false;
-            }
+            gel("load-more-button").hidden = false;
         }
     } else {
         if (!gel("banner").classList.contains("failed")) gel("banner").innerHTML = "No Data";
@@ -1218,14 +1235,11 @@ if (window.location.href.split("?").length > 1) {
 
     processQueue();
 
-    if (["pushshift", "reddit", "coddit"].includes(search.api)) {
-        gel("load-more-button").innerHTML = "Load " + (search.sort == "asc" ? "After" : "Before");
-
-        gel("load-more-button").onclick = (event) => {
-            event.target.dataset.pageCount = parseInt(event.target.dataset.pageCount) + 1;
-            processQueue();
-        };
-    }
+    gel("load-more-button").innerHTML = "Load " + (search.sort == "asc" ? "After" : "Before");
+    gel("load-more-button").onclick = (event) => {
+        event.target.dataset.pageCount = parseInt(event.target.dataset.pageCount) + 1;
+        processQueue();
+    };
 }
 
 gel("request-form").onsubmit = (event) => {

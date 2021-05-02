@@ -79,9 +79,9 @@ section p a {
     text-decoration: underline;
 }
 
-select:hover,
-button:hover,
-input:hover,
+select:not(:disabled):hover,
+button:not(:disabled):hover,
+input:not(:disabled):hover,
 a:hover,
 .select:hover .expand-icon {
     transition: color 200ms, background-color 200ms, opacity 200ms, filter 200ms;
@@ -373,7 +373,7 @@ header nav ul li a.current {
     border-bottom: 4px solid #eee;
 }
 
-#request-form :is(select, button, input:not([type="submit"]):not([type="reset"]), .select) {
+#request-form :is(select, input:not([type="submit"]):not([type="reset"]), .select) {
     height: 28px;
     min-height: 28px;
     max-height: 28px;
@@ -400,14 +400,11 @@ header nav ul li a.current {
     flex-wrap: wrap;
 }
 
-#request-form fieldset .form-field {
-    margin-right: 4px;
-}
-
 .form-field,
 .form-field-inline {
     display: inline-block;
     margin: 4px 2px;
+    margin-right: 4px;
 }
 
 .form-field label {
@@ -646,10 +643,15 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
     color: red;
 }
 
-.item .info .tag.distinguished,
+.item .info .tag.distinguished.moderator,
 .item .info .tag.stickied {
     border-color: green;
     color: green;
+}
+
+.item .info .tag.distinguished.admin {
+    border-color: #ff4500;
+    color: #ff4500;
 }
 
 .item .info .tag.stickied {
@@ -685,9 +687,14 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
     filter: invert(90%) sepia(16%) saturate(6855%) hue-rotate(355deg) brightness(104%) contrast(106%);
 }
 
-.item .info .tag.distinguished::before {
+.item .info .tag.distinguished.moderator::before {
     background-image: url("/search/static/4QPC1.svg");
     filter: invert(28%) sepia(100%) saturate(1216%) hue-rotate(92deg) brightness(93%) contrast(105%);
+}
+
+.item .info .tag.distinguished.admin::before {
+    background-image: url("/search/static/YWNFb.png");
+    filter: invert(29%) sepia(63%) saturate(3439%) hue-rotate(3deg) brightness(105%) contrast(101%);
 }
 
 .item .info .tag.stickied::before {
