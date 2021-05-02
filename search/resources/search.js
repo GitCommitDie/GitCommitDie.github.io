@@ -1326,7 +1326,7 @@ qels("[data-disable-on], [data-hide-on], [data-reset-on]").forEach((element) => 
         element.closest("form").addEventListener("reset", () => {
             setTimeout(() => {
                 validateRequirements();
-            }, 0); // yes this is requited
+            }, 0); // yes this is required
         });
 
         function onTrue() {
