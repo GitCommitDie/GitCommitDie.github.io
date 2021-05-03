@@ -697,7 +697,7 @@ async function fetchItems(request) {
                     sibling_count: items.length,
                     sibling_position: items.indexOf(item) + 1,
                     valid: false,
-                    refreshed: false,
+                    refreshed: search.api == "reddit",
                 });
                 names.push(item.name);
                 if (!uniqueTimestamps.includes(item.created_utc)) {
