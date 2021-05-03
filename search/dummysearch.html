@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>dummy search</title>
+        <style>
+            * {
+                outline: none;
+                box-sizing: border-box;
+            }
+            body {
+                background-color: #eee;
+                color: #111;
+                font-family: Arial, Helvetica, sans-serif;
+            }
+            main {
+                width: clamp(500px, 60%, 90%);
+                margin: auto;
+            }
+            fieldset {
+                margin: 4px 0;
+                padding: 2px 0;
+                border: 0;
+            }
+            input,
+            select,
+            button {
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 14px;
+                padding: 2px;
+            }
+            input[type="submit"]:not(:disabled),
+            button:not(:disabled) {
+                cursor: pointer;
+            }
+            a {
+                color: #111;
+            }
+            .thing {
+                margin: 8px 0;
+            }
+            .thing .tagline {
+                display: flex;
+                padding: 4px;
+                border-radius: 8px 8px 0 0;
+                background-color: #ccc;
+                justify-content: space-between;
+                font-weight: bold;
+                font-size: 0.9em;
+            }
+            .thing .title {
+                margin: 0 0 8px 0;
+                font-size: 1.25em;
+            }
+            .thing .content {
+                padding: 8px;
+                border-radius: 0 0 8px 8px;
+                background-color: #ddd;
+                word-break: break-word;
+                overflow: hidden;
+            }
+            .thing .content img {
+                max-width: 200px;
+            }
+            #search-form {
+                margin: 16px 0;
+            }
+            #p-q {
+                width: 400px;
+            }
+            #page-buttons {
+                display: flex;
+                justify-content: space-between;
+            }
+            [hidden] {
+                display: none !important;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>dummy search</h1>
+            <form action="./basic" id="search-form">
+                <fieldset>
+                    <label for="p-q">Search Term</label>
+                    <input type="text" name="q" id="p-q" placeholder="Search Term" />
+                    <label for="p-author">Subreddit</label>
+                    <input type="text" name="subreddit" id="p-subreddit" placeholder="Subreddit" />
+                    <label for="p-author">Author</label>
+                    <input type="text" name="author" id="p-author" placeholder="Author" />
+                </fieldset>
+                <fieldset>
+                    <label for="p-before">Before</label>
+                    <input type="datetime-local" name="before" id="p-before" placeholder="Before" />
+                    <label for="p-after">After</label>
+                    <input type="datetime-local" name="after" id="p-after" placeholder="After" />
+                    <label for="p-score">Score Threshold</label>
+                    <input type="text" name="score" id="p-score" placeholder="Score Threshold" />
+                </fieldset>
+                <fieldset>
+                    <label for="p-limit">Limit</label>
+                    <input type="number" name="limit" id="p-limit" step="1" placeholder="Limit" min="1" max="100" />
+                    <label for="o-type">Type</label>
+                    <select name="type" id="o-type">
+                        <option value="submission">Submissions</option>
+                        <option value="comment">Comments</option>
+                    </select>
+                </fieldset>
+                <input type="reset" value="Reset" />
+                <input type="submit" value="Search" />
+            </form>
+            <div id="results"></div>
+            <div id="page-buttons" hidden>
+                <button id="previous-page-button">Previous</button>
+                <button id="next-page-button">Next</button>
+            </div>
+        </main>
+        <script>
+            const args = new URLSearchParams(window.location.search);
+            const form = document.getElementById("search-form");
+            const results = document.getElementById("results");
+            const pageButtons = document.getElementById("page-buttons");
+            if (window.location.href.split("?").length > 1) {
+                results.innerHTML = '<h1 style="text-align: center">loading...</h1>';
+                const type = args.get("type") || "submission";
+                const requestArgs = new URLSearchParams(args.toString());
+                requestArgs.delete("type");
+                const url = "https://api.pushshift.io/reddit/search/" + type + "?" + requestArgs.toString();
+                fetch(url)
+                    .then((response) => response.json())
+                    .then((data) => {
+                        results.innerHTML = "";
+                        for (const thing of data.data) {
+                            let thingElement = document.createElement("div");
+                            thingElement.classList.add("thing");
+                            let html = '<div class="tagline"><span><a href="https://www.reddit.com' + thing.permalink + '">';
+                            if (type == "submission") {
+                                html += "submission</a> by ";
+                            } else {
+                                html += "comment</a> by ";
+                            }
+                            html +=
+                                '<a href="' +
+                                thing.author +
+                                '">u/' +
+                                thing.author +
+                                '</a> in <a href="https://www.reddit.com/r/' +
+                                thing.subreddit +
+                                '">r/' +
+                                thing.subreddit +
+                                "</a></span><span>" +
+                                new Date(thing.created_utc * 1000).toLocaleString() +
+                                "</span></div>";
+                            let content = "";
+                            if (type == "submission") {
+                                content += '<h1 class="title">' + thing.title + "</h1>";
+                                if (thing.is_self) {
+                                    content += thing.selftext;
+                                } else {
+                                    if (thing.url.match(/\.(png|jpe?g|gif|svg|webp)/)) {
+                                        content += '<a href="' + thing.url + '"><img src="' + thing.url + '"></a>';
+                                    } else {
+                                        content += '<a href="' + thing.url + '">' + thing.url + "</a>";
+                                    }
+                                }
+                            } else {
+                                content += thing.body;
+                            }
+                            content = content.replaceAll("\n", "<br>");
+                            html += '<div class="content">' + content + "</div>";
+                            thingElement.innerHTML = html;
+                            results.appendChild(thingElement);
+                        }
+                        if (args.has("before")) {
+                            document.getElementById("previous-page-button").onclick = () => {
+                                args.delete("before");
+                                args.set("after", data.data[0].created_utc);
+                                window.location.href = window.location.href.split("?")[0] + "?" + args.toString();
+                            };
+                        } else {
+                            document.getElementById("previous-page-button").disabled = true;
+                        }
+                        if (data.data.length == (args.get("limit") || 25)) {
+                            document.getElementById("next-page-button").onclick = () => {
+                                args.delete("after");
+                                args.set("before", data.data[data.data.length - 1].created_utc);
+                                window.location.href = window.location.href.split("?")[0] + "?" + args.toString();
+                            };
+                        } else {
+                            document.getElementById("next-page-button").disabled = true;
+                        }
+                        pageButtons.hidden = false;
+                    })
+                    .catch((error) => {
+                        results.innerHTML = '<h1 style="text-align: center">' + error + "</h1>";
+                    });
+            }
+            for (const input of form.querySelectorAll("input, select")) {
+                if (args.has(input.name)) {
+                    input.value = args.get(input.name);
+                }
+            }
+            form.onsubmit = (event) => {
+                for (const input of form.querySelectorAll("input, select")) {
+                    if (!input.value) {
+                        input.name = "";
+                    }
+                }
+            };
+        </script>
+    </body>
+</html>

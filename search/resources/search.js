@@ -636,7 +636,7 @@ async function fetchItems(request) {
 
         let callParams = new URLSearchParams(params.toString());
 
-        let apiEndpoint = `https://api.pushshift.io/reddit/search/${request.type}/`;
+        let apiEndpoint = `https://api.pushshift.io/reddit/${request.type}/search`;
         let separator = "?";
         let fetchOptions = {};
 
