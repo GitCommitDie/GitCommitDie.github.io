@@ -33,7 +33,7 @@ var cachedItems = {
     all: [],
     valid: [],
     add(item) {
-        if (this.all.every((x) => x._name != item._name)) {
+        if (this.all.every((x) => x.name != item.name)) {
             this.all.push(item);
             if (item._meta.valid) {
                 this.valid.push(item);
@@ -52,7 +52,7 @@ var cachedItems = {
         return returnedItems;
     },
     has(item) {
-        return cachedItems.all.some((x) => x._name == item._name);
+        return cachedItems.all.some((x) => x.name == item.name);
     },
     get shown() {
         return this.valid.filter((item) => item._meta.shown);
@@ -133,27 +133,68 @@ var reddit = {
 };
 
 function appendItemProps(item, metadata) {
-    if (item.fullname) {
-        item.id = item.fullname.split("_")[1];
+    if (!metadata) {
+        metadata = {};
     }
-    item._kind = metadata.type == "comment" ? "t1" : "t3";
-    item._type = metadata.type;
-    item._name = item._kind + "_" + item.id;
-    item._meta = metadata;
-    if (!item.permalink) {
-        if (item._type == "comment") {
-            item.permalink = `/r/${item.subreddit}/comments/${item.link_id}/-/${item.id}/`;
-        } else if (item._type == "submission") {
+
+    if (metadata.type) {
+        if (!item.kind) {
+            if (metadata.type == "comment") {
+                item.kind = "t1";
+            } else if (metadata.type == "submission") {
+                item.kind = "t3";
+            }
+        }
+        if (!item.type) {
+            item.type = metadata.type;
+        }
+    }
+
+    if (!item.kind || !item.id) {
+        if (item.fullname) {
+            if (!item.kind) {
+                item.kind = item.fullname.split("_")[0];
+            }
+            if (!item.id) {
+                item.id = item.fullname.split("_")[1];
+            }
+        } else if (item.name) {
+            if (!item.kind) {
+                item.kind = item.name.split("_")[0];
+            }
+            if (!item.id) {
+                item.id = item.name.split("_")[1];
+            }
+        }
+    } else if (item.kind && item.id) {
+        if (!item.fullname) {
+            item.fullname = item.kind + "_" + item.id;
+        }
+        if (!item.name) {
+            item.name = item.kind + "_" + item.id;
+        }
+    }
+
+    if (!item.permalink && item.kind && item.subreddit && item.id) {
+        if (item.kind == "t1") {
+            if (item.link_id) {
+                item.permalink = `/r/${item.subreddit}/comments/${item.link_id}/-/${item.id}/`;
+            }
+        } else if (item.kind == "t3") {
             item.permalink = `/r/${item.subreddit}/comments/${item.id}/-/`;
         }
     }
+
+    if (!item.full_link && item.permalink) {
+        item.full_link = "https://www.reddit.com" + item.permalink;
+    }
+
+    item._meta = metadata;
+
     return item;
 }
 
 function appendExtraProps(item) {
-    if (!item._meta) {
-        item = appendItemProps(item, metadata);
-    }
     item._meta.state = "live";
     if (item.removed_by_category) {
         if (item.removed_by_category == "deleted") {
@@ -162,7 +203,7 @@ function appendExtraProps(item) {
             item._meta.state = "removed " + item.removed_by_category;
         }
     } else {
-        if (item._kind == "t1") {
+        if (item.kind == "t1") {
             if (
                 (item.author == "[deleted]" && item.body == "[removed]") ||
                 (item._refreshed_properties &&
@@ -190,9 +231,9 @@ function getInfoTags(item) {
     return cel(
         "ul",
         [
-            (item.name || item._name).startsWith("t1_")
+            item.kind == "t1"
                 ? item.parent_id.startsWith("t1_")
-                    ? celp("li", "C", { classList: "full-type", title: "Comment Reply" })
+                    ? celp("li", "RC", { classList: "full-type", title: "Comment Reply" })
                     : celp("li", "TC", { classList: "full-type", title: "Top-Level Comment" })
                 : item.is_video
                 ? celp("li", "VS", { classList: "full-type", title: "Video Submission" })
@@ -213,11 +254,11 @@ function getInfoTags(item) {
                 : null,
             item.upvote_ratio
                 ? celp("li", parseInt(item.upvote_ratio * 100) + "%", {
-                      classList: "upvote-ratio",
+                      classList: "upvote-ratio advanced-option",
                       title: parseInt(item.upvote_ratio * 100) + "% Upvoted",
                   })
                 : null,
-            item.all_awardings && item.all_awardings.length // item.all_awardings?.length
+            item.all_awardings && item.all_awardings.length // item.all_awardings?.length isn't workingggg
                 ? celp("li", commaSeparateNumber(item.all_awardings.length), {
                       classList: "award-count",
                       title:
@@ -256,13 +297,18 @@ function getInfoTags(item) {
                 : item._meta.state == "missing"
                 ? celp("li", "Missing", { classList: "tag warn", title: "Item could not be found on Reddit." })
                 : null,
+            item._meta.refreshed
+                ? celp("li", "", { classList: "tag refreshed", title: "Synced with Reddit" })
+                : settings.refreshItems
+                ? celp("li", "", { classList: "tag refresh-failed", title: "Failed to Sync with Reddit" })
+                : null,
         ],
         "info"
     );
 }
 
 function getContent(item) {
-    if (item._kind == "t1") {
+    if (item.kind == "t1") {
         return cel(
             "div",
             cel(
@@ -282,7 +328,7 @@ function getContent(item) {
             ),
             "content"
         );
-    } else if (item._kind == "t3") {
+    } else if (item.kind == "t3") {
         let empty = false;
         return cel(
             "div",
@@ -342,24 +388,25 @@ function getContent(item) {
 }
 
 function getDisplayItem(item) {
-    let displayItem = null;
-
     let attributes = [
-        ["data-name", item._name],
-        ["data-id", item.id],
-        ["data-kind", item._kind],
-        ["data-type", item._type],
-        ["data-created-utc", item.created_utc],
-        ["data-permalink", item.permalink],
-        ["data-author", item.author],
-        ["data-subreddit", item.subreddit],
-        ["id", "thing-" + item._name],
+        item.fullname ? ["data-fullname", item.fullname] : null,
+        item.name ? ["data-name", item.name] : null,
+        item.id ? ["data-id", item.id] : null,
+        item.kind ? ["data-kind", item.kind] : null,
+        item.type ? ["data-type", item.type] : null,
+        item.created_utc ? ["data-created-utc", item.created_utc] : null,
+        item.permalink ? ["data-permalink", item.permalink] : null,
+        item.author ? ["data-author", item.author] : null,
+        item.subreddit ? ["data-subreddit", item.subreddit] : null,
+        item.name ? ["id", "thing-" + item.name] : null,
     ];
+
+    let displayItem = celwa("div", attributes, item.name, "item thing");
 
     function getTagline() {
         return cel(
             "p",
-            `${item._kind == "t3" ? "submitted" : "commented"} by <a href="https://www.reddit.com/user/${
+            `${item.kind == "t3" ? "submitted" : "commented"} by <a href="https://www.reddit.com/user/${
                 item.author
             }" class="author">u/${item.author}</a>` +
                 (item.author_flair_text ? `<span class="flair">${item.author_flair_text}</span>` : "") +
@@ -375,7 +422,7 @@ function getDisplayItem(item) {
     function getTitleContent() {
         return cel(
             "h1",
-            `<a href="https://www.reddit.com${item.permalink}">${(function () {
+            `<a href="${item.full_link}">${(function () {
                 let string = item.title;
                 if (urlParams.has("q")) {
                     for (let part of urlParams.get("q").split(/[^a-z0-9_.]/gi)) {
@@ -396,11 +443,11 @@ function getDisplayItem(item) {
         return cel(
             "ul",
             [
-                cel("li", `<a href="https://www.reddit.com${item.permalink}" target="_blank">view on reddit</a>`),
+                cel("li", `<a href="${item.full_link}" target="_blank">view on reddit</a>`),
                 cel("li", `<a href="https://www.removeddit.com${item.permalink}" target="_blank">view on removeddit</a>`),
                 cel(
                     "li",
-                    `<a href="https://api.pushshift.io/reddit/search/${item._type}/?ids=${item.id}" target="_blank">view on pushshift</a>`,
+                    `<a href="https://api.pushshift.io/reddit/search/${item.type}/?ids=${item.id}" target="_blank">view on pushshift</a>`,
                     "advanced-option dev-option"
                 ),
                 cel(
@@ -415,7 +462,7 @@ function getDisplayItem(item) {
         );
     }
 
-    switch (item._kind) {
+    switch (item.kind) {
         case "t1":
             displayItem = celwa(
                 "div",
@@ -424,7 +471,7 @@ function getDisplayItem(item) {
                     getTagline(),
                     getInfoTags(item),
                     getContent(item),
-                    settings.advanced
+                    settings.dev
                         ? cel(
                               "div",
                               [tableify_v2({ properties: item }, { usePlaceholders: true, sort: true })],
@@ -433,7 +480,14 @@ function getDisplayItem(item) {
                         : null,
                     getButtons(),
                 ],
-                ["item", "thing", "comment", item.removed_by_category == "deleted" ? "deleted" : null]
+                [
+                    "item",
+                    "thing",
+                    "comment",
+                    item._meta.state ? item._meta.state.split(" ")[0] : null,
+                    item._meta.refreshed ? "refreshed" : null,
+                    item._meta.missing ? "missing" : null,
+                ]
             );
             break;
         case "t3":
@@ -472,7 +526,7 @@ function getDisplayItem(item) {
                         }
                     ),
                     getContent(item),
-                    settings.advanced
+                    settings.dev
                         ? cel(
                               "div",
                               [tableify_v2({ properties: item }, { usePlaceholders: true, sort: true })],
@@ -486,9 +540,10 @@ function getDisplayItem(item) {
                     "thing",
                     "submission",
                     item.is_self ? null : "expandable",
-                    item.removed_by_category == "deleted" ? "deleted" : null,
                     item.is_self ? "self" : "link",
                     item.over_18 ? "nsfw" : null,
+                    item._meta.state ? item._meta.state.split(" ")[0] : null,
+                    item._meta.refreshed ? "refreshed" : null,
                     item._meta.missing ? "missing" : null,
                 ]
             );
@@ -501,9 +556,9 @@ function validateItem(item, params) {
     function checkExact() {
         let valid = true;
         if (urlParams.get("meta_search_exact") == "true") {
-            if (item._kind == "t1") {
+            if (item.kind == "t1") {
                 valid = item.body.match(params.get("q"));
-            } else if (item._kind == "t3") {
+            } else if (item.kind == "t3") {
                 valid =
                     item.title.match(params.get("q")) ||
                     (item.is_self && item.selftext && item.selftext.match(params.get("q")));
@@ -514,9 +569,9 @@ function validateItem(item, params) {
     function filterPattern() {
         let valid = true;
         if (urlParams.get("meta_filter_pattern")) {
-            if (item._kind == "t1") {
+            if (item.kind == "t1") {
                 valid = item.body.match(urlParams.get("meta_filter_pattern"));
-            } else if (item._kind == "t3") {
+            } else if (item.kind == "t3") {
                 valid =
                     item.title.match(urlParams.get("meta_filter_pattern")) ||
                     (item.is_self && item.selftext && item.selftext.match(urlParams.get("meta_filter_pattern")));
@@ -561,8 +616,7 @@ function validateItem(item, params) {
     function checkState() {
         let valid = true;
         if (urlParams.has("meta_state")) {
-            console.log(item._meta.state);
-            valid = urlParams.get("meta_state").split(/[,+ ]/).includes(item._meta.state.split(/\s/)[0]);
+            valid = urlParams.get("meta_state").split(/[,+ ]/).includes(item._meta.state.split(" ")[0]);
         }
         return valid;
     }
@@ -592,7 +646,13 @@ async function fetchItems(request) {
             apiEndpoint = `https://archivesort.org/discuss/reddit/miser?type=${request.type}s`;
             separator = "&";
         } else if (search.api == "reddit") {
-            apiEndpoint = `https://oauth.reddit.com/search`;
+            if (callParams.has("subreddit")) {
+                apiEndpoint = `https://oauth.reddit.com/r/${callParams.get("subreddit")}/search`;
+                callParams.set("restrict_sr", "true");
+                callParams.delete("subreddit");
+            } else {
+                apiEndpoint = "https://oauth.reddit.com/search";
+            }
             fetchOptions.headers = { Authorization: "Bearer " + (await reddit.getAccessToken()) };
         }
 
@@ -639,7 +699,7 @@ async function fetchItems(request) {
                     valid: false,
                     refreshed: false,
                 });
-                names.push(item._name);
+                names.push(item.name);
                 if (!uniqueTimestamps.includes(item.created_utc)) {
                     uniqueTimestamps.push(item.created_utc);
                 }
@@ -660,7 +720,7 @@ async function fetchItems(request) {
                     for (let refreshedItem of refresh_data.data.children) {
                         refreshedItem = refreshedItem.data;
                         for (let item of items) {
-                            if (refreshedItem.name == item._name) {
+                            if (refreshedItem.name == item.name) {
                                 item._refreshed_properties = {};
                                 for (const [key, value] of Object.entries(refreshedItem)) {
                                     if (
@@ -682,7 +742,7 @@ async function fetchItems(request) {
                                     }
                                 }
                                 item._meta.refreshed = true;
-                                array_remove(names, item._name);
+                                array_remove(names, item.name);
                                 break;
                             }
                         }
@@ -690,7 +750,7 @@ async function fetchItems(request) {
 
                     for (let name of names) {
                         for (let item of items) {
-                            if (name == item._name) {
+                            if (name == item.name) {
                                 item._meta.missing = true;
                                 break;
                             }
@@ -882,7 +942,7 @@ function showItems() {
         try {
             itemsContainer.appendChild(getDisplayItem(item));
         } catch (error) {
-            console.error(`failed to show item ${item._name}`);
+            console.error(`failed to show item ${item.name}`);
             console.error(error);
         }
         gel("item-count").innerHTML = itemsContainer.childElementCount;
@@ -916,7 +976,7 @@ function updateInfo() {
         subreddit.contributions += 1;
         author.contributions += 1;
 
-        if (item._type == "submission") {
+        if (item.type == "submission") {
             subreddit.submissions += 1;
             author.submissions += 1;
             submissions_count += 1;

@@ -565,6 +565,7 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
     margin-right: 8px;
     border-radius: 4px;
     font-size: calc(1em - 4px);
+    white-space: nowrap;
 }
 
 .item .info li:not(.tag) {
@@ -638,14 +639,13 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
     color: gold;
 }
 
-.item .info .tag.locked::before,
-.item .info .tag.tag.distinguished::before,
-.item .info .tag.tag.stickied::before,
-.item .info .tag.spoiler::before,
-.item .info .tag.nsfw::before,
-.item .info .tag.removed::before,
-.item .info .tag.deleted::before,
-.item .info .tag.warn::before {
+.item .info .tag.refreshed,
+.item .info .tag.refresh-failed {
+    border-color: transparent;
+    opacity: 0.5;
+}
+
+.item .info .tag::before {
     content: "";
     height: 1em;
     width: 1em;
@@ -699,6 +699,46 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
 .item .info .tag.warn::before {
     background-image: url("/search/static/2dlg0.svg");
     filter: invert();
+}
+
+.item .info .tag.refreshed::before {
+    background-image: url("/search/static/YFccM.svg");
+}
+
+.item .info .tag.refresh-failed::before {
+    background-image: url("/search/static/R9Wj0.svg");
+}
+
+.item .info .tag.refreshed:hover,
+.item .info .tag.refresh-failed:hover {
+    opacity: 1;
+    transition: opacity 80ms;
+}
+
+.item .info .tag.refreshed::after {
+    display: inline-flex;
+    width: 0;
+    overflow: hidden;
+    animation: expand-left 80ms;
+    white-space: nowrap;
+}
+
+.item .info .tag.refreshed:hover::after {
+    content: "Synced with Reddit";
+    width: 110px;
+}
+
+.item .info .tag.refresh-failed::after {
+    content: "Failed to Sync";
+}
+
+@keyframes expand-left {
+    from {
+        width: 0;
+    }
+    to {
+        width: 110px;
+    }
 }
 
 .item .content {
