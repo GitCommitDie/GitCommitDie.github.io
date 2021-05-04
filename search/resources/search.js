@@ -640,7 +640,11 @@ async function fetchItems(request) {
         let separator = "?";
         let fetchOptions = {};
 
-        if (search.api == "coddit") {
+        if (search.api == "pushshift") {
+            if (callParams.has("after") && !callParams.has("sort")) {
+                callParams.set("sort", "desc");
+            }
+        } else if (search.api == "coddit") {
             apiEndpoint = `https://coddit.xyz/modtools/api/db/basicquery/${request.type}`;
         } else if (search.api == "miser") {
             apiEndpoint = `https://archivesort.org/discuss/reddit/miser?type=${request.type}s`;
