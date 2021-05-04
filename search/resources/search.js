@@ -64,6 +64,10 @@ var cachedItems = {
 
 var requests = {
     sources: [],
+    history: [],
+    get hasNext() {
+        return requests.sources.some((i) => i.next);
+    },
     addSource(request) {
         this.sources.push(request);
     },
@@ -71,9 +75,15 @@ var requests = {
 
 var search = {
     get visibleLimit() {
-        return search.size != "none"
-            ? (search.size || settings.defaultPageSize) * gel("load-more-button").dataset.pageCount
+        return this.size != "none"
+            ? (this.size || settings.defaultPageSize) * gel("load-more-button").dataset.pageCount
             : Infinity;
+    },
+    get expectedLimit() {
+        return this.visibleLimit * requests.sources.filter((i) => i.next).length;
+    },
+    get expectedMaximum() {
+        return this.visibleLimit * requests.sources.length;
     },
 };
 
@@ -150,6 +160,12 @@ function appendItemProps(item, metadata) {
         }
     }
 
+    if (!item.name && item.fullname) {
+        item.name = item.fullname;
+    } else if (!item.fullname && item.name) {
+        item.fullname = item.name;
+    }
+
     if (!item.kind || !item.id) {
         if (item.fullname) {
             if (!item.kind) {
@@ -166,7 +182,9 @@ function appendItemProps(item, metadata) {
                 item.id = item.name.split("_")[1];
             }
         }
-    } else if (item.kind && item.id) {
+    }
+
+    if ((!item.fullname || !item.name) && item.kind && item.id) {
         if (!item.fullname) {
             item.fullname = item.kind + "_" + item.id;
         }
@@ -450,6 +468,13 @@ function getDisplayItem(item) {
                     `<a href="https://api.pushshift.io/reddit/search/${item.type}/?ids=${item.id}" target="_blank">view on pushshift</a>`,
                     "advanced-option dev-option"
                 ),
+                search.api == "coddit" && item._meta.state == "deleted"
+                    ? cel(
+                          "li",
+                          `<a href="https://coddit.xyz/modtools/undelete/?id=${item.name}" target="_blank">recover via coddit undelete</a>`,
+                          "advanced-option"
+                      )
+                    : null,
                 cel(
                     "li",
                     `<a href="${item._meta.fetched_from}">Request: ${item._meta.request_id} • Item: ${
@@ -634,15 +659,15 @@ async function fetchItems(request) {
     try {
         let params = new URLSearchParams(request.params.toString());
 
-        let callParams = new URLSearchParams(params.toString());
+        let fetchParams = new URLSearchParams(params.toString());
 
         let apiEndpoint = `https://api.pushshift.io/reddit/${request.type}/search`;
         let separator = "?";
         let fetchOptions = {};
 
         if (search.api == "pushshift") {
-            if (callParams.has("after") && !callParams.has("sort")) {
-                callParams.set("sort", "desc");
+            if (fetchParams.has("after") && !fetchParams.has("sort")) {
+                fetchParams.set("sort", "desc");
             }
         } else if (search.api == "coddit") {
             apiEndpoint = `https://coddit.xyz/modtools/api/db/basicquery/${request.type}`;
@@ -650,10 +675,10 @@ async function fetchItems(request) {
             apiEndpoint = `https://archivesort.org/discuss/reddit/miser?type=${request.type}s`;
             separator = "&";
         } else if (search.api == "reddit") {
-            if (callParams.has("subreddit")) {
-                apiEndpoint = `https://oauth.reddit.com/r/${callParams.get("subreddit")}/search`;
-                callParams.set("restrict_sr", "true");
-                callParams.delete("subreddit");
+            if (fetchParams.has("subreddit")) {
+                apiEndpoint = `https://oauth.reddit.com/r/${fetchParams.get("subreddit")}/search`;
+                fetchParams.set("restrict_sr", "true");
+                fetchParams.delete("subreddit");
             } else {
                 apiEndpoint = "https://oauth.reddit.com/search";
             }
@@ -661,14 +686,15 @@ async function fetchItems(request) {
         }
 
         if (["pushshift", "coddit"].includes(search.api)) {
-            callParams.set("size", 100);
+            fetchParams.set("size", 100);
+            ["filter", "limit"].forEach((i) => fetchParams.delete(i));
         } else if (["miser"].includes(search.api)) {
-            callParams.set("size", search.size != "none" ? Math.min(parseInt(search.size), 1000) : 1000);
+            fetchParams.set("size", search.size != "none" ? Math.min(search.size, 1000) : 1000);
         } else if (["reddit"].includes(search.api)) {
-            callParams.set("limit", search.size != "none" ? Math.min(parseInt(search.size), 100) : 100);
+            fetchParams.set("limit", search.size != "none" ? Math.min(search.size, 100) : 100);
         }
 
-        let fetchURL = apiEndpoint + (callParams.toString() ? separator + callParams.toString() : "");
+        let fetchURL = apiEndpoint + (fetchParams.toString() ? separator + fetchParams.toString() : "");
 
         updateRequestTable(fetchURL, "pending");
 
@@ -697,7 +723,7 @@ async function fetchItems(request) {
                 item = appendItemProps(item, {
                     type: request.type,
                     fetched_from: fetchURL,
-                    request_id: qel("#request-table tbody").childElementCount,
+                    request_id: requests.history.length,
                     sibling_count: items.length,
                     sibling_position: items.indexOf(item) + 1,
                     valid: false,
@@ -763,7 +789,6 @@ async function fetchItems(request) {
                 } catch (error) {
                     console.error("Failed to refresh items from reddit API.");
                     console.error(error);
-                    window.sessionStorage.removeItem("reddit_access_token");
                 }
             }
 
@@ -778,18 +803,18 @@ async function fetchItems(request) {
                 cachedItems.add(item);
             }
 
-            if (items.length >= (callParams.get("size") || callParams.get("limit")) && newItems.length) {
+            if (items.length >= (fetchParams.get("size") || fetchParams.get("limit")) && newItems.length) {
                 if (["pushshift", "coddit", "miser"].includes(search.api)) {
                     if (search.sort == "asc") {
                         params.set("after", items[items.length - 1].created_utc - (uniqueTimestamps.length != 1 ? 1 : 0)); // i don't like it either
                     } else {
                         params.set("before", items[items.length - 1].created_utc + (uniqueTimestamps.length != 1 ? 1 : 0));
                     }
-                    return { next: { type: request.type, params } };
+                    return { next: { type: request.type, params }, fetchedURL: fetchURL };
                 } else if (search.api == "reddit") {
                     if (data.data.after) {
                         params.set("after", data.data.after);
-                        return { next: { type: request.type, params } };
+                        return { next: { type: request.type, params }, fetchedURL: fetchURL };
                     }
                 }
             }
@@ -797,6 +822,8 @@ async function fetchItems(request) {
             updateRequestTable(fetchURL, "failed");
             throw error;
         }
+
+        return { next: null, fetchedURL: fetchURL };
     } catch (error) {
         console.error(error);
 
@@ -805,8 +832,6 @@ async function fetchItems(request) {
 
         throw error;
     }
-
-    return { next: null };
 }
 
 function updateRequestTable(url, status) {
@@ -881,26 +906,27 @@ async function processQueue() {
     gel("items-panel").classList.remove("collapsed");
     gel("load-more-button").hidden = true;
 
-    gel(
-        "banner"
-    ).innerHTML = `<img class="loading-icon" src="/search/static/CGH1e.png">Loading • Found <span class="loaded-count">${cachedItems.valid.length}</span> Items`;
+    gel("banner").innerHTML =
+        `<img class="loading-icon" src="/search/static/CGH1e.png">Loading • Found ` +
+        `<span class="loaded-count">${cachedItems.valid.length}</span>/` +
+        `~<span class="expected-count">${search.size != "none" ? search.expectedMaximum : "∞"}</span> Items in ` +
+        `<span class="request-count">${requests.history.length}</span> Requests`;
     gel("banner").hidden = false;
 
-    while (
-        (search.size == "none" ||
-            cachedItems.valid.length < search.visibleLimit * requests.sources.filter((i) => i.next).length) &&
-        requests.sources.some((i) => i.next)
-    ) {
+    while ((search.size == "none" || cachedItems.valid.length < search.expectedLimit) && requests.hasNext) {
         for (let i = 0; i < requests.sources.length; i++) {
             let source = requests.sources[i];
             if (!source.next) continue;
 
             let fetchResult = await fetchItems(source.next);
             source.next = fetchResult.next;
+            requests.history.push(source.fetchedURL);
 
             sortItems();
 
             qel("#banner .loaded-count").innerHTML = cachedItems.valid.length;
+            qel("#banner .expected-count").innerHTML = search.size != "none" ? search.expectedMaximum : "∞";
+            qel("#banner .request-count").innerHTML = requests.history.length;
 
             if (i != requests.sources.length - 1) {
                 await sleep(1000);
@@ -1250,6 +1276,10 @@ if (window.location.href.split("?").length > 1) {
     search.sort = urlParams.get("sort") || gel("p-standard-sort").defaultValue;
     search.narrow = urlParams.has("ids") || urlParams.has("fullname");
     search.params = new URLSearchParams(window.location.search);
+
+    if (search.size != "none") {
+        search.size = parseInt(search.size);
+    }
 
     qels("#request-form input, #request-form select").forEach((element) => {
         let eqvParam = element.name.replace(/\[\]$/, "");
