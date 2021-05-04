@@ -47,8 +47,11 @@
                 border-radius: 8px 8px 0 0;
                 background-color: #ccc;
                 justify-content: space-between;
-                font-weight: bold;
                 font-size: 0.9em;
+            }
+            .thing .tagline a {
+                text-decoration: none;
+                font-weight: bold;
             }
             .thing .title {
                 margin: 0 0 8px 0;
@@ -173,24 +176,20 @@
                             thingElement.innerHTML = html;
                             results.appendChild(thingElement);
                         }
-                        if (args.has("before")) {
-                            document.getElementById("previous-page-button").onclick = () => {
-                                args.delete("before");
+                        document.getElementById("previous-page-button").onclick = () => {
+                            args.delete("before");
+                            if (data.data.length) {
                                 args.set("after", data.data[0].created_utc);
-                                window.location.href = window.location.href.split("?")[0] + "?" + args.toString();
-                            };
-                        } else {
-                            document.getElementById("previous-page-button").disabled = true;
-                        }
-                        if (data.data.length == (args.get("limit") || 25)) {
-                            document.getElementById("next-page-button").onclick = () => {
-                                args.delete("after");
+                            }
+                            window.location.href = window.location.href.split("?")[0] + "?" + args.toString();
+                        };
+                        document.getElementById("next-page-button").onclick = () => {
+                            args.delete("after");
+                            if (data.data.length) {
                                 args.set("before", data.data[data.data.length - 1].created_utc);
-                                window.location.href = window.location.href.split("?")[0] + "?" + args.toString();
-                            };
-                        } else {
-                            document.getElementById("next-page-button").disabled = true;
-                        }
+                            }
+                            window.location.href = window.location.href.split("?")[0] + "?" + args.toString();
+                        };
                         pageButtons.hidden = false;
                     })
                     .catch((error) => {
