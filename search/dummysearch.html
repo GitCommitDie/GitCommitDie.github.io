@@ -129,6 +129,7 @@
                 results.innerHTML = '<h1 style="text-align: center">loading...</h1>';
                 const type = args.get("type") || "submission";
                 const requestArgs = new URLSearchParams(args.toString());
+                requestArgs.set("sort", "desc");
                 requestArgs.delete("type");
                 const url = "https://api.pushshift.io/reddit/search/" + type + "?" + requestArgs.toString();
                 fetch(url)
