@@ -698,6 +698,12 @@ async function fetchItems(request) {
 
         updateRequestTable(fetchURL, "pending");
 
+        if (requests.history.length && Date.now() - requests.history[requests.history.length - 1].time < 1000) {
+            let cooldownDuration = 1000 - (Date.now() - requests.history[requests.history.length - 1].time);
+            console.log("waiting " + cooldownDuration + "ms...");
+            await sleep(cooldownDuration);
+        }
+
         try {
             console.log("fetching " + fetchURL + "...");
             const response = await fetch(fetchURL, fetchOptions);
@@ -920,17 +926,13 @@ async function processQueue() {
 
             let fetchResult = await fetchItems(source.next);
             source.next = fetchResult.next;
-            requests.history.push(source.fetchedURL);
+            requests.history.push({ url: fetchResult.fetchedURL, time: Date.now() });
 
             sortItems();
 
             qel("#banner .loaded-count").innerHTML = cachedItems.valid.length;
             qel("#banner .expected-count").innerHTML = search.size != "none" ? search.expectedMaximum : "∞";
             qel("#banner .request-count").innerHTML = requests.history.length;
-
-            if (i != requests.sources.length - 1) {
-                await sleep(1000);
-            }
         }
     }
 
