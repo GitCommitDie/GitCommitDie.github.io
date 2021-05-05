@@ -533,7 +533,7 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
 .item .title {
     font-size: 1em;
     margin: 4px 0;
-    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .item .domain {
