@@ -94,7 +94,7 @@ var reddit = {
             ? JSON.parse(window.sessionStorage.getItem("reddit_access_token"))
             : null;
         if (!existingToken || existingToken.expires_at <= time()) {
-            console.log("fetching access token...");
+            console.info("fetching access token...");
             const auth_response = await fetch("https://www.reddit.com/api/v1/access_token", {
                 method: "POST",
                 body: "grant_type=https://oauth.reddit.com/grants/installed_client&device_id=DO_NOT_TRACK_THIS_DEVICE",
@@ -235,7 +235,21 @@ function appendExtraProps(item) {
                     item._refreshed_properties.author == "[deleted]" &&
                     item._refreshed_properties.body == "[deleted]")
             ) {
-                item._meta.state = "deleted";
+                item._meta.state = "deleted maybe";
+            }
+        } else if (item.kind == "t3") {
+            if (
+                item.selftext == "[removed]" ||
+                (item._refreshed_properties && item._refreshed_properties.selftext == "[removed]")
+            ) {
+                item._meta.state = "removed maybe";
+            } else if (
+                (item.author == "[deleted]" && item.selftext == "[deleted]") ||
+                (item._refreshed_properties &&
+                    item._refreshed_properties.author == "[deleted]" &&
+                    item._refreshed_properties.selftext == "[deleted]")
+            ) {
+                item._meta.state = "deleted maybe";
             }
         }
     }
@@ -432,7 +446,9 @@ function getDisplayItem(item) {
                     item.created_utc * 1000
                 ).toString()}" class="created-utc">${formatTime(
                     time() - item.created_utc
-                )} ago</time> in <a href="https://www.reddit.com/r/${item.subreddit}">r/${item.subreddit}</a>`,
+                )} ago</time> in <a href="https://www.reddit.com/r/${item.subreddit}" class="subreddit">r/${
+                    item.subreddit
+                }</a>`,
             "tagline"
         );
     }
@@ -440,7 +456,7 @@ function getDisplayItem(item) {
     function getTitleContent() {
         return cel(
             "h1",
-            `<a href="${item.full_link}">${(function () {
+            `<a href="${item.full_link}" class="title-link">${(function () {
                 let string = item.title;
                 if (urlParams.has("q")) {
                     for (let part of urlParams.get("q").split(/[^a-z0-9_.]/gi)) {
@@ -700,12 +716,12 @@ async function fetchItems(request) {
 
         if (requests.history.length && Date.now() - requests.history[requests.history.length - 1].time < 1000) {
             let cooldownDuration = 1000 - (Date.now() - requests.history[requests.history.length - 1].time);
-            console.log("waiting " + cooldownDuration + "ms...");
+            console.info("waiting " + cooldownDuration + "ms...");
             await sleep(cooldownDuration);
         }
 
         try {
-            console.log("fetching " + fetchURL + "...");
+            console.info("fetching " + fetchURL + "...");
             const response = await fetch(fetchURL, fetchOptions);
 
             updateRequestTable(fetchURL, response.status);
@@ -747,11 +763,11 @@ async function fetchItems(request) {
 
             if (items.length && settings.refreshItems && search.api != "reddit") {
                 try {
-                    let refreshURL = "https://oauth.reddit.com/api/info?id=" + names.join(",");
+                    let refreshPath = "/api/info?id=" + names.join(",");
 
-                    console.log("fetching " + refreshURL + "...");
+                    console.info("fetching https://oauth.reddit.com" + refreshPath + "...");
 
-                    const refresh_data = await reddit.get("/api/info?id=" + names.join(","));
+                    const refresh_data = await reddit.get(refreshPath);
 
                     for (let refreshedItem of refresh_data.data.children) {
                         refreshedItem = refreshedItem.data;
@@ -760,9 +776,15 @@ async function fetchItems(request) {
                                 item._refreshed_properties = {};
                                 for (const [key, value] of Object.entries(refreshedItem)) {
                                     if (
-                                        !["author", "selftext", "body", "selftext_html", "body_html", "distinguished"].includes(
-                                            key
-                                        )
+                                        ![
+                                            "author",
+                                            "selftext",
+                                            "body",
+                                            "selftext_html",
+                                            "body_html",
+                                            "title",
+                                            "distinguished",
+                                        ].includes(key)
                                     ) {
                                         if (!(refreshedItem.author == "[deleted]" && refreshedItem[key] == null)) {
                                             item[key] = value;
