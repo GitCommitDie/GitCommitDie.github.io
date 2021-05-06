@@ -317,7 +317,7 @@ function getInfoTags(item) {
             item.stickied ? celp("li", "Stickied", { classList: "tag stickied", title: "Pinned by Moderator" }) : null,
             item.locked ? celp("li", "Locked", { classList: "tag locked", title: "Locked by Moderator" }) : null,
             item.archived ? celp("li", "Archived", { classList: "tag archived", title: "Archived" }) : null,
-            item._meta.state == "deleted"
+            item._meta.state.includes("deleted")
                 ? celp("li", "Deleted", { classList: "tag deleted", title: "Deleted by Author" })
                 : item._meta.state == "removed moderator"
                 ? celp("li", "Removed by Moderator", {
@@ -326,7 +326,7 @@ function getInfoTags(item) {
                   })
                 : item._meta.state == "removed reddit"
                 ? celp("li", "Removed by Reddit", { classList: "tag removed reddit", title: "Removed by Reddit" })
-                : item._meta.state.startsWith("removed")
+                : item._meta.state.includes("removed")
                 ? celp("li", "Removed", { classList: "tag removed", title: "Removed" })
                 : item._meta.state == "missing"
                 ? celp("li", "Missing", { classList: "tag warn", title: "Item could not be found on Reddit." })
@@ -532,7 +532,7 @@ function getDisplayItem(item) {
                     `<a href="https://api.pushshift.io/reddit/search/${item.type}/?ids=${item.id}" target="_blank">view on pushshift</a>`,
                     "advanced-option dev-option"
                 ),
-                search.api == "coddit" && item._meta.state == "deleted"
+                search.api == "coddit" && item._meta.state.includes("deleted")
                     ? cel(
                           "li",
                           `<a href="https://coddit.xyz/modtools/undelete/?id=${item.name}" target="_blank">recover via coddit undelete</a>`,
@@ -1380,10 +1380,6 @@ if (window.location.href.split("?").length > 1) {
         }
     });
 
-    if (search.api == "reddit") {
-        search.type = "submission";
-    }
-
     let queryParams = new URLSearchParams(
         [...search.params.entries()]
             .filter((param) => param[1] && !param[0].startsWith("meta_"))
@@ -1391,6 +1387,10 @@ if (window.location.href.split("?").length > 1) {
                 return x + y[0] + "=" + encodeURIComponent(y[1]) + "&";
             }, "?")
     );
+
+    if (search.api == "reddit") {
+        search.type = "submission";
+    }
 
     if (search.type == "any") {
         requests.addSource({ next: { type: "submission", params: queryParams } });
