@@ -307,6 +307,7 @@ function getInfoTags(item) {
                 : null,
             item.over_18 ? celp("li", "NSFW", { classList: "tag nsfw", title: "Tagged as NSFW" }) : null,
             item.spoiler ? celp("li", "Spoiler", { classList: "tag spoiler", title: "Tagged as Spoiler" }) : null,
+            item.is_original_content ? celp("li", "OC", { classList: "tag oc", title: "Tagged as Original Content" }) : null,
             item.distinguished
                 ? celp("li", "Distinguished", {
                       classList: "tag distinguished " + item.distinguished,
@@ -315,6 +316,7 @@ function getInfoTags(item) {
                 : null,
             item.stickied ? celp("li", "Stickied", { classList: "tag stickied", title: "Pinned by Moderator" }) : null,
             item.locked ? celp("li", "Locked", { classList: "tag locked", title: "Locked by Moderator" }) : null,
+            item.archived ? celp("li", "Archived", { classList: "tag archived", title: "Archived" }) : null,
             item._meta.state == "deleted"
                 ? celp("li", "Deleted", { classList: "tag deleted", title: "Deleted by Author" })
                 : item._meta.state == "removed moderator"
@@ -435,13 +437,53 @@ function getDisplayItem(item) {
 
     let displayItem = celwa("div", attributes, item.name, "item thing");
 
+    function parseRichtext(richtext) {
+        let parsed = "";
+        for (let element of richtext) {
+            if (element.e == "text") {
+                parsed += `<span>${element.t}</span>`;
+            } else if (element.e == "emoji") {
+                parsed += `<img src="${element.u}" alt="${element.a}" class="emoji" title="${element.a}">`;
+            }
+        }
+        return parsed;
+    }
+
+    function parseFlair(flair_type, flair_richtext, flair_text, flair_background_color, flair_text_color) {
+        let flairContent = "";
+        if (flair_type == "richtext" && flair_richtext && flair_richtext.length) {
+            flairContent +=
+                '<span class="flair richtext' +
+                (flair_text_color ? " " + flair_text_color : "") +
+                (flair_background_color && flair_background_color != "transparent" ? " has-background" : "") +
+                '"';
+            let style = "";
+            if (flair_background_color) {
+                style += `background-color: ${flair_background_color};`;
+            }
+            if (style) {
+                flairContent += ` style="${style}"`;
+            }
+            flairContent += ` title="${flair_text}">` + parseRichtext(flair_richtext) + "</span>";
+        } else if (flair_text) {
+            flairContent = `<span class="flair plaintext" title="${flair_text}">${flair_text}</span>`;
+        }
+        return flairContent;
+    }
+
     function getTagline() {
         return cel(
             "p",
             `${item.kind == "t3" ? "submitted" : "commented"} by <a href="https://www.reddit.com/user/${
                 item.author
             }" class="author">u/${item.author}</a>` +
-                (item.author_flair_text ? `<span class="flair">${item.author_flair_text}</span>` : "") +
+                parseFlair(
+                    item.author_flair_type,
+                    item.author_flair_richtext,
+                    item.author_flair_text,
+                    item.author_flair_background_color,
+                    item.author_flair_text_color
+                ) +
                 ` <time datetime="${new Date(item.created_utc * 1000).toString()}" title="${new Date(
                     item.created_utc * 1000
                 ).toString()}" class="created-utc">${formatTime(
@@ -465,7 +507,13 @@ function getDisplayItem(item) {
                 }
                 return string;
             })()}</a>` +
-                (item.link_flair_text ? `<span class="flair">${item.link_flair_text}</span>` : "") +
+                parseFlair(
+                    item.link_flair_type,
+                    item.link_flair_richtext,
+                    item.link_flair_text,
+                    item.link_flair_background_color,
+                    item.link_flair_text_color
+                ) +
                 (item.domain
                     ? `<a href="https://www.reddit.com/domain/${item.domain}/" class="domain">(${item.domain})</a>`
                     : ""),
@@ -757,7 +805,7 @@ async function fetchItems(request) {
                 }
             });
 
-            if (uniqueTimestamps.length == 1) {
+            if (uniqueTimestamps.length == 1 && items.length >= 100) {
                 console.warn("Encountered second-segment with >=100 items. Accuracy may be affected.");
             }
 

@@ -554,6 +554,10 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
     font-weight: bold;
 }
 
+.item .tagline time {
+    margin-left: 2px;
+}
+
 .item .info {
     margin: 0;
     padding: 0;
@@ -639,6 +643,17 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
     color: gold;
 }
 
+.item .info .tag.archived {
+    border-color: grey;
+    color: grey;
+}
+
+.item .info .tag.oc {
+    border-color: #0079d3;
+    background-color: #003e6c;
+    font-weight: bold;
+}
+
 .item .info .tag.refreshed,
 .item .info .tag.refresh-failed {
     border-color: transparent;
@@ -654,6 +669,16 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
     vertical-align: middle;
     background-repeat: no-repeat;
     background-size: contain;
+}
+
+.item .info .tag.archived::before {
+    background-image: url("/search/static/84TIO.svg");
+    filter: invert(41%) sepia(93%) saturate(0%) hue-rotate(193deg) brightness(103%) contrast(91%);
+}
+
+.item .info .tag.oc::before {
+    background-image: url("/search/static/VwjeP.svg");
+    filter: invert();
 }
 
 .item .info .tag.locked::before {
@@ -826,8 +851,25 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
     border-radius: 4px;
     background-color: #181818;
     color: #eee;
-
     font-size: 0.75em;
+}
+
+.flair.has-background {
+    border: none;
+}
+
+.flair.has-background.dark {
+    color: #000;
+}
+
+.flair.has-background.light {
+    color: #fff;
+}
+
+.flair .emoji {
+    height: calc(1em + 4px);
+    vertical-align: middle;
+    margin-top: -2px;
 }
 
 .md h1,
