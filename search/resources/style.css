@@ -180,6 +180,10 @@ header {
     margin: 16px auto;
 }
 
+main {
+    padding-bottom: 80px;
+}
+
 .select {
     display: inline-flex;
     align-items: center;
@@ -941,6 +945,36 @@ body:not(.setting-dev) .item.expandable:not(.expanded) .buttons {
 
 #request-table a {
     text-decoration: underline;
+}
+
+#aggregations .aggregation {
+    height: 550px;
+    width: 100%;
+    overflow: hidden;
+}
+
+#aggregations .aggregation .agg-title {
+    margin: 4px 0;
+    text-align: center;
+}
+
+#aggregations .aggregation .content {
+    display: flex;
+}
+
+#aggregations .aggregation .content .table-container {
+    min-width: 300px;
+    height: 500px;
+    overflow: auto;
+}
+
+#aggregations .aggregation .content .table-container table {
+    width: calc(100% - 8px);
+}
+
+#aggregations .aggregation .content .chart-container {
+    height: 500px;
+    width: 500px;
 }
 
 #banner {

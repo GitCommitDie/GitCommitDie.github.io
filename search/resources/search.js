@@ -32,6 +32,9 @@ var settings = {
 var cachedItems = {
     all: [],
     valid: [],
+    aggregations: {
+        all: [],
+    },
     add(item) {
         if (this.all.every((x) => x.name != item.name)) {
             this.all.push(item);
@@ -879,6 +882,10 @@ async function fetchItems(request) {
                 cachedItems.add(item);
             }
 
+            if (data.aggs) {
+                cachedItems.aggregations.all.push(data.aggs);
+            }
+
             if (items.length >= (fetchParams.get("size") || fetchParams.get("limit")) && newItems.length) {
                 if (["pushshift", "coddit", "miser"].includes(search.api)) {
                     if (search.sort == "asc") {
@@ -908,72 +915,6 @@ async function fetchItems(request) {
 
         throw error;
     }
-}
-
-function updateRequestTable(url, status) {
-    function updateRow(statusText, statusClass = status) {
-        let tableBody = gel("request-table").querySelector("tbody");
-        let exists = false;
-        for (let row of Array.from(tableBody.children)) {
-            if (row.children[0].children[0].innerHTML.replace(/&amp;/g, "&") == url) {
-                row.children[1].remove();
-                row.insertBefore(cel("td", statusText, ["status", "status-" + statusClass]), row.lastChild);
-                exists = true;
-                break;
-            }
-        }
-
-        if (!exists) {
-            tableBody.appendChild(
-                cel("tr", [
-                    cel("td", celwa("a", [["href", url]], url)),
-                    cel("td", statusText, ["status", "status-" + statusClass]),
-                    cel("td", tableBody.childElementCount + 1),
-                ])
-            );
-        }
-    }
-
-    if (status == "pending") {
-        updateRow("Pending");
-    } else if (status == "failed") {
-        updateRow("Failed");
-    } else {
-        updateRow(status, status.toString()[0]);
-    }
-}
-
-function getPageTitle() {
-    let title = "";
-    if (search.type == "submission") {
-        title += "Submissions ";
-    } else if (search.type == "comment") {
-        title += "Comments ";
-    } else {
-        title += "Submissions and Comments ";
-    }
-
-    if (urlParams.has("author")) {
-        let authors = urlParams
-            .get("author")
-            .split(/[\s,+]/)
-            .map((author) => "u/" + author);
-        title += "by " + authors.join(" or ") + " ";
-    }
-
-    if (urlParams.has("subreddit")) {
-        let subreddits = urlParams
-            .get("subreddit")
-            .split(/[\s,+]/)
-            .map((subreddit) => "r/" + subreddit);
-        title += "in " + subreddits.join(" or ") + " ";
-    }
-
-    if (urlParams.has("q")) {
-        title += 'Matching "' + urlParams.get("q") + '"';
-    }
-
-    return title + " - Coddit Search Results";
 }
 
 async function processQueue() {
@@ -1016,7 +957,23 @@ async function processQueue() {
     }
     showItems();
     if (settings.advanced) {
-        updateInfo();
+        try {
+            updateInfo();
+            gel("info-panel").classList.remove("collapsed");
+        } catch (error) {
+            console.error("Failed to update results information.");
+            console.error(error);
+        }
+    }
+    if (cachedItems.aggregations.all.length && settings.advanced) {
+        try {
+            updateAggregationInfo();
+            gel("aggregations-panel").hidden = false;
+            gel("aggregations-panel").classList.remove("collapsed");
+        } catch (error) {
+            console.error("Failed to update aggregation information.");
+            console.error(error);
+        }
     }
 }
 
@@ -1252,8 +1209,136 @@ function updateInfo() {
             })(),
         ])
     );
+}
 
-    gel("info-panel").classList.remove("collapsed");
+function updateAggregationInfo() {
+    let aggInfo = gel("aggregations");
+    let aggs = cachedItems.aggregations.all[0];
+
+    for (let agg in aggs) {
+        let aggregation = aggs[agg];
+        let aggTitle = agg.replace(/[_-]+/g, " ").replace(/\b\w/g, (x) => x.toUpperCase());
+        let keyTitle = "Key";
+        let valueTitle = "Count";
+        let keyKey = "key"; // xd
+        let valueKey = "doc_count";
+
+        if (agg == "author") {
+            keyTitle = "Username";
+        } else if (agg == "subreddit") {
+            keyTitle = "Subreddit";
+        }
+
+        let tbody = cel("tbody");
+
+        let table = cel("table", [cel("thead", [cel("tr", [cel("th", keyTitle), cel("th", valueTitle)])]), tbody]);
+
+        for (let i = 0; i < aggregation.length; i++) {
+            let aggregate = aggregation[i];
+            let row = cel("tr", [
+                cel("td", aggregate[keyKey] != null ? aggregate[keyKey] : celp("em", "NULL", { style: "opacity: 0.5;" })),
+                cel("td", aggregate[valueKey], "center"),
+            ]);
+            tbody.appendChild(row);
+            if (i > 25) row.hidden = true;
+        }
+
+        if (aggregation.length > 25) {
+            let expandRow = celp("tr", [cel("td", cel("em", "Click to Show More")), cel("td", cel("em", "..."), "center")], {
+                style: "cursor: pointer;",
+            });
+            expandRow.onclick = () => {
+                expandRow.remove();
+                Array.from(tbody.children).forEach((i) => (i.hidden = false));
+            };
+            tbody.appendChild(expandRow);
+        }
+
+        let chartCanvas = cel("canvas", null);
+        aggInfo.appendChild(
+            celp(
+                "div",
+                [
+                    cel("h3", aggTitle, "agg-title"),
+                    cel("div", [cel("div", table, "table-container"), cel("div", chartCanvas, "chart-container")], "content"),
+                ],
+                {
+                    classList: "aggregation",
+                }
+            )
+        );
+        let ctx = chartCanvas.getContext("2d");
+        new Chart(ctx, {
+            type: "pie",
+            data: {
+                labels: aggregation.map((i) => i[keyKey]).slice(0, 10),
+                datasets: [
+                    {
+                        label: aggTitle + "s",
+                        data: aggregation.map((i) => i[valueKey]).slice(0, 10),
+                        borderWidth: 1,
+                        backgroundColor: [
+                            "#F44336",
+                            "#E91E63",
+                            "#9C27B0",
+                            "#673AB7",
+                            "#3F51B5",
+                            "#2196F3",
+                            "#03A9F4",
+                            "#00BCD4",
+                            "#009688",
+                            "#4CAF50",
+                            "#8BC34A",
+                            "#CDDC39",
+                            "#FFEB3B",
+                            "#FFC107",
+                            "#FF9800",
+                            "#FF5722",
+                            "#795548",
+                            "#9E9E9E",
+                            "#607D8B",
+                        ],
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+            },
+        });
+    }
+}
+
+function updateRequestTable(url, status) {
+    function updateRow(statusText, statusClass = status) {
+        let tableBody = gel("request-table").querySelector("tbody");
+        let exists = false;
+        for (let row of Array.from(tableBody.children)) {
+            if (row.children[0].children[0].innerHTML.replace(/&amp;/g, "&") == url) {
+                row.children[1].remove();
+                row.insertBefore(cel("td", statusText, ["status", "status-" + statusClass]), row.lastChild);
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists) {
+            tableBody.appendChild(
+                cel("tr", [
+                    cel("td", celwa("a", [["href", url]], url)),
+                    cel("td", statusText, ["status", "status-" + statusClass]),
+                    cel("td", tableBody.childElementCount + 1),
+                ])
+            );
+        }
+    }
+
+    if (status == "pending") {
+        updateRow("Pending");
+    } else if (status == "failed") {
+        updateRow("Failed");
+    } else {
+        updateRow(status, status.toString()[0]);
+    }
 }
 
 function loadSettings() {
@@ -1278,6 +1363,39 @@ function loadSettings() {
             element.disabled = true;
         });
     }
+}
+
+function getPageTitle() {
+    let title = "";
+    if (search.type == "submission") {
+        title += "Submissions ";
+    } else if (search.type == "comment") {
+        title += "Comments ";
+    } else {
+        title += "Submissions and Comments ";
+    }
+
+    if (urlParams.has("author")) {
+        let authors = urlParams
+            .get("author")
+            .split(/[\s,+]/)
+            .map((author) => "u/" + author);
+        title += "by " + authors.join(" or ") + " ";
+    }
+
+    if (urlParams.has("subreddit")) {
+        let subreddits = urlParams
+            .get("subreddit")
+            .split(/[\s,+]/)
+            .map((subreddit) => "r/" + subreddit);
+        title += "in " + subreddits.join(" or ") + " ";
+    }
+
+    if (urlParams.has("q")) {
+        title += 'Matching "' + urlParams.get("q") + '"';
+    }
+
+    return title + " - Coddit Search Results";
 }
 
 qels("input[type='checkbox']").forEach((element) => {
@@ -1345,13 +1463,17 @@ if (window.location.href.split("?").length > 1) {
     search.type = urlParams.get("meta_type") || gel("p-meta_type").defaultValue;
     search.api = urlParams.get("meta_api") || gel("p-meta_api").defaultValue;
     search.size = urlParams.get("size") || urlParams.get("limit") || settings.defaultPageSize;
-    search.sort = urlParams.get("sort") || gel("p-standard-sort").defaultValue;
+    search.sort = urlParams.get("sort") || gel("ps-standard-sort").defaultValue;
     search.narrow = urlParams.has("ids") || urlParams.has("fullname");
     search.params = new URLSearchParams(window.location.search);
 
     if (search.size != "none") {
         search.size = parseInt(search.size);
     }
+
+    gel("items-panel").hidden = false;
+    gel("info-panel").hidden = false;
+    gel("requests-panel").hidden = false;
 
     qels("#request-form input, #request-form select").forEach((element) => {
         let eqvParam = element.name.replace(/\[\]$/, "");
@@ -1416,6 +1538,15 @@ gel("request-form").onsubmit = (event) => {
             return;
         }
     }
+
+    if (gel("p-aggs").value) {
+        if (!gel("p-after").value) {
+            alert("Aggregation requests require a valid after parameter.");
+            event.preventDefault();
+            return;
+        }
+    }
+
     Array.from(event.target.querySelectorAll("input, select")).forEach((element) => {
         if (!element.value || (element.type != "checkbox" && element.value == element.defaultValue) || element.disabled) {
             element.name = "";
