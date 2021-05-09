@@ -79,11 +79,11 @@ section p a {
     text-decoration: underline;
 }
 
-select:not(:disabled):hover,
-button:not(:disabled):hover,
-input:not(:disabled):hover,
-a:hover,
-.select:hover .expand-icon {
+select,
+button,
+input,
+a,
+.expand-icon {
     transition: color 200ms, background-color 200ms, opacity 200ms, filter 200ms;
 }
 
@@ -109,7 +109,8 @@ input[type="checkbox"] {
 select:hover,
 button:hover,
 input:hover,
-.select:hover .expand-icon {
+.select:hover .expand-icon,
+.form-field label:hover ~ .select select:not(:disabled):not(:focus) ~ .expand-icon {
     background-color: #2a2a2a;
 }
 
