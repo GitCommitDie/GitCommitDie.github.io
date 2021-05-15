@@ -544,7 +544,7 @@ function getDisplayItem(item) {
                     : null,
                 cel(
                     "li",
-                    `${item.fullname} <a href="${item._meta.fetched_from}">Request: ${item._meta.request_id} • Item: ${
+                    `<a href="${item._meta.fetched_from}">${item.fullname} • Request: ${item._meta.request_id} • Item: ${
                         item._meta.sibling_position
                     }/${item._meta.sibling_count}${item._meta.refreshed ? " • Refreshed" : ""}</a>`,
                     "request-info advanced-option dev-option"
